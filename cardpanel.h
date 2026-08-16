@@ -5,7 +5,7 @@
 #include <QPixmap>
 #include "card.h"
 
-class Player;
+#include "player.h"
 
 // 卡牌窗口类，负责绘制和显示一张扑克牌
 class CardPanel : public QWidget

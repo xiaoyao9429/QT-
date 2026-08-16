@@ -21,6 +21,10 @@ set(PROJECT_SOURCES
         card.h
         cardpanel.cpp
         cardpanel.h
+        player.cpp
+        player.h
+        cards.cpp
+        cards.h
 )
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)

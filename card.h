@@ -62,4 +62,11 @@ private:
     CardSuit m_suit;    // 牌的花色
 };
 
+// 全局哈希函数，使 Card 可作为 QSet<Card> / QHash<Card, T> 的键
+inline size_t qHash(const Card& card, size_t seed = 0) Q_DECL_NOTHROW
+{
+    return seed ^ (static_cast<int>(card.point()) << 8)
+               ^ static_cast<int>(card.suit());
+}
+
 #endif // CARD_H

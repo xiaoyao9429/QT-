@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+﻿cmake_minimum_required(VERSION 3.16)
 
 project(Landlords VERSION 0.1 LANGUAGES CXX)
 
@@ -25,12 +25,31 @@ set(PROJECT_SOURCES
         player.h
         cards.cpp
         cards.h
+        userplayer.cpp
+        userplayer.h
+        robotplayer.cpp
+        robotplayer.h
+        gamecontrol.cpp
+        gamecontrol.h
+        scorepanel.cpp
+        scorepanel.h
+        scorepanel.ui
+        mybutton.h
+        mybutton.cpp
+        buttongroup.h
+        buttongroup.cpp
+        buttongroup.ui
 )
+
+include_directories(${PROJECT_SOURCE_DIR})
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
     qt_add_executable(Landlords
         MANUAL_FINALIZATION
         ${PROJECT_SOURCES}
+        mybutton.h mybutton.cpp
+        buttongroup.h buttongroup.cpp buttongroup.ui
+        res.qrc
     )
 # Define target properties for Android with Qt 6 as:
 #    set_property(TARGET Landlords APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR

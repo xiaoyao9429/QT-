@@ -2,7 +2,8 @@
 #define GAMEMAINWINDOW_H
 
 #include <QMainWindow>
-
+#include "gamecontrol.h"
+#include "scorepanel.h"
 QT_BEGIN_NAMESPACE
 namespace Ui {
 class GameMainWindow;
@@ -19,5 +20,6 @@ public:
 
 private:
     Ui::GameMainWindow *ui;
+
 };
 #endif // GAMEMAINWINDOW_H

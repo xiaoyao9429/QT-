@@ -1,10 +1,17 @@
-#include "player.h"
+﻿#include "player.h"
 
 Player::Player(QObject *parent)
     : QObject(parent)
     , m_role(PlayerRole::Role_Begin)
     , m_sex(PlayerSex::Sex_Begin)
+    , m_type(PlayerType::Type_Begin)
+    , m_direction(PlayerDirection::Direction_Begin)
     , m_isThinking(false)
+    , m_isWin(false)
+    , m_prevPlayer(nullptr)
+    , m_nextPlayer(nullptr)
+    , m_pendPlayer(nullptr)
+    , m_name("player")
 {
 }
 
@@ -48,6 +55,26 @@ PlayerSex Player::sex() const
     return m_sex;
 }
 
+void Player::setType(PlayerType type)
+{
+    m_type = type;
+}
+
+PlayerType Player::type() const
+{
+    return m_type;
+}
+
+void Player::setDirection(PlayerDirection direction)
+{
+    m_direction = direction;
+}
+
+PlayerDirection Player::direction() const
+{
+    return m_direction;
+}
+
 void Player::setIsThinking(bool thinking)
 {
     m_isThinking = thinking;
@@ -56,6 +83,56 @@ void Player::setIsThinking(bool thinking)
 bool Player::isThinking() const
 {
     return m_isThinking;
+}
+
+void Player::setIsWin(bool isWin)
+{
+    m_isWin = isWin;
+}
+
+bool Player::isWin() const
+{
+    return m_isWin;
+}
+
+void Player::setPrevPlayer(Player* player)
+{
+    m_prevPlayer = player;
+}
+
+Player* Player::prevPlayer() const
+{
+    return m_prevPlayer;
+}
+
+void Player::setNextPlayer(Player* player)
+{
+    m_nextPlayer = player;
+}
+
+Player* Player::nextPlayer() const
+{
+    return m_nextPlayer;
+}
+
+void Player::setPendCards(const Cards& cards)
+{
+    m_pendCards = cards;
+}
+
+Cards Player::pendCards() const
+{
+    return m_pendCards;
+}
+
+void Player::setPendPlayer(Player* player)
+{
+    m_pendPlayer = player;
+}
+
+Player* Player::pendPlayer() const
+{
+    return m_pendPlayer;
 }
 
 void Player::addCard(const Card& card)
@@ -88,6 +165,21 @@ Cards Player::cards() const
     return m_cards;
 }
 
+void Player::setScore(double score)
+{
+    m_score = score;
+}
+
+double Player::score() const
+{
+    return m_score;
+}
+
+void Player::playCards(const Cards& cards)
+{
+    m_cards.remove(cards);
+}
+
 int Player::cardCount() const
 {
     return m_cards.cardCount();
@@ -104,11 +196,6 @@ void Player::prepareTakeCards()
 }
 
 void Player::startCallLord()
-{
-    // 基类默认空实现，由子类（玩家/机器人）重写
-}
-
-void Player::startPlayCards()
 {
     // 基类默认空实现，由子类（玩家/机器人）重写
 }

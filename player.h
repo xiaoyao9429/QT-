@@ -25,6 +25,25 @@ enum class PlayerSex
     Sex_End             // 结束标记
 };
 
+// 玩家类型
+enum class PlayerType
+{
+    Type_Begin,         // 起始标记
+    Human,              // 真人玩家
+    Robot,              // 机器人
+    Type_End            // 结束标记
+};
+
+// 玩家显示方位（在游戏窗口中的位置）
+enum class PlayerDirection
+{
+    Direction_Begin,    // 起始标记
+    Left,               // 左侧
+    Right,              // 右侧
+    Bottom,             // 底部（玩家自己）
+    Direction_End       // 结束标记
+};
+
 // 玩家基类，可派生出玩家类和机器人类
 class Player : public QObject
 {
@@ -49,9 +68,35 @@ public:
     void setSex(PlayerSex sex);
     PlayerSex sex() const;
 
+    // 设置玩家类型（真人/机器人）
+    void setType(PlayerType type);
+    PlayerType type() const;
+
+    // 设置显示方位
+    void setDirection(PlayerDirection direction);
+    PlayerDirection direction() const;
+
     // 设置是否在思考
     void setIsThinking(bool thinking);
     bool isThinking() const;
+
+    // 设置是否获胜
+    void setIsWin(bool isWin);
+    bool isWin() const;
+
+    // 设置上家玩家
+    void setPrevPlayer(Player* player);
+    Player* prevPlayer() const;
+    // 设置下家玩家
+    void setNextPlayer(Player* player);
+    Player* nextPlayer() const;
+
+    // 设置要应对的牌（需要管的牌）
+    void setPendCards(const Cards& cards);
+    Cards pendCards() const;
+    // 设置打出该牌的玩家
+    void setPendPlayer(Player* player);
+    Player* pendPlayer() const;
 
     // 添加卡牌
     void addCard(const Card& card);
@@ -61,23 +106,31 @@ public:
     void removeCard(const Card& card);
     void removeCards(const Cards& cards);
 
-    // 清空卡牌
+    // 清空所有手牌
     void clearCards();
     // 获取卡牌集合
-    Cards cards() const;
+    Cards cards() const;\
+
+    // 设置当前得分
+    void setScore(double score);
+    // 获取当前得分
+    double score() const;
+
+   
 
     // 卡牌数量
     int cardCount() const;
+    
+    // 出牌：从手牌中移除指定卡牌
+    void playCards(const Cards& cards);
 
-    // 虚函数：准备出牌（子类可重写，如机器人AI思考）
+    // 虚函数：准备主动出牌（自己起头，子类可重写，如机器人AI思考）
     virtual void preparePlayCards();
-    // 虚函数：准备接牌（子类可重写）
+    // 虚函数：准备接上家打出的牌（被动跟牌，子类可重写）
     virtual void prepareTakeCards();
 
     // 虚函数：开始叫地主
     virtual void startCallLord();
-    // 虚函数：开始出牌
-    virtual void startPlayCards();
 
 signals:
     // 通知将要出牌
@@ -92,8 +145,16 @@ protected:
     QPixmap m_avatar;           // 头像
     PlayerRole m_role;          // 角色（地主/农民）
     PlayerSex m_sex;            // 性别
+    PlayerType m_type;          // 玩家类型（真人/机器人）
+    PlayerDirection m_direction;// 显示方位
     bool m_isThinking;          // 是否在思考
+    bool m_isWin;               // 是否获胜
+    Player* m_prevPlayer;       // 上家玩家
+    Player* m_nextPlayer;       // 下家玩家
+    Cards m_pendCards;          // 要应对的牌（需要管的牌）
+    Player* m_pendPlayer;       // 打出要应对牌的玩家
     Cards m_cards;              // 持有的卡牌
+    double m_score;             // 当前得分
 };
 
 #endif // PLAYER_H

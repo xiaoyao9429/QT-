@@ -4,6 +4,7 @@
 #include <QMainWindow>
 #include "gamecontrol.h"
 #include "scorepanel.h"
+#include "gamecontrol.h"
 QT_BEGIN_NAMESPACE
 namespace Ui {
 class GameMainWindow;
@@ -20,6 +21,7 @@ public:
 
 private:
     Ui::GameMainWindow *ui;
+    GameControl* m_gameControl;
 
 };
 #endif // GAMEMAINWINDOW_H

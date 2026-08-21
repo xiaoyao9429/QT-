@@ -65,7 +65,7 @@
        </item>
       </layout>
      </widget>
-     <widget class="QWidget" name="passOrPlay">
+     <widget class="QWidget" name="passOrPlayPage">
       <layout class="QHBoxLayout" name="horizontalLayout_4">
        <item>
         <spacer name="horizontalSpacer_5">

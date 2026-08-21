@@ -13,6 +13,7 @@ GameControl::GameControl(QObject *parent)
     , m_lordScore(0)
     , m_status(Status_Begin)
 {
+    playerInit();
 }
 
 GameControl::~GameControl()

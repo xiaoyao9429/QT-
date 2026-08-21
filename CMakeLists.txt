@@ -36,9 +36,9 @@ set(PROJECT_SOURCES
         scorepanel.ui
         mybutton.h
         mybutton.cpp
-        buttongroup.h
-        buttongroup.cpp
-        buttongroup.ui
+        # buttongroup.h
+        # buttongroup.cpp
+        # buttongroup.ui
 )
 
 include_directories(${PROJECT_SOURCE_DIR})

@@ -5,6 +5,7 @@
 #include "gamecontrol.h"
 #include "scorepanel.h"
 #include "gamecontrol.h"
+#include <QVector>
 QT_BEGIN_NAMESPACE
 namespace Ui {
 class GameMainWindow;
@@ -18,10 +19,15 @@ class GameMainWindow : public QMainWindow
 public:
     GameMainWindow(QWidget *parent = nullptr);
     ~GameMainWindow();
+    void GameControlInit();
+protected:
+    void paintEvent(QPaintEvent *event) override;
 
 private:
-    Ui::GameMainWindow *ui;
+    Ui::GameMainWindow * ui;
     GameControl* m_gameControl;
+    QPixmap m_bkImage;
+    QVector<Player*> m_playerList;
 
 };
 #endif // GAMEMAINWINDOW_H

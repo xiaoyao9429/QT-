@@ -14,6 +14,7 @@ GameControl::GameControl(QObject *parent)
     , m_status(Status_Begin)
 {
     playerInit();
+    initCards();
 }
 
 GameControl::~GameControl()

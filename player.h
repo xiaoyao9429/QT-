@@ -1,4 +1,4 @@
-#ifndef PLAYER_H
+﻿#ifndef PLAYER_H
 #define PLAYER_H
 
 #include <QObject>
@@ -98,17 +98,17 @@ public:
     void setPendPlayer(Player* player);
     Player* pendPlayer() const;
 
-    // 添加卡牌
+    // 添加手牌
     void addCard(const Card& card);
     void addCards(const Cards& cards);
 
-    // 移除卡牌
+    // 移除手牌
     void removeCard(const Card& card);
     void removeCards(const Cards& cards);
 
     // 清空所有手牌
     void clearCards();
-    // 获取卡牌集合
+    // 获取手牌集合
     Cards cards() const;\
 
     // 设置当前得分
@@ -132,6 +132,9 @@ public:
     // 虚函数：开始叫地主
     virtual void startCallLord();
 
+    // 叫地主/抢地主
+    void grabLordBet(int bet);
+
 signals:
     // 通知将要出牌
     void notifyPlayCards(const Cards& cards);
@@ -139,6 +142,8 @@ signals:
     void notifyTakeCards(const Cards& cards);
     // 通知不要
     void notifyPass();
+    //通知已经下注
+    void notifyGravLordBet(Player * player ,int bet);
 
 protected:
     QString m_name;             // 名字

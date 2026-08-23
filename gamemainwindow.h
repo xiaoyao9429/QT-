@@ -42,6 +42,14 @@ public:
     void onDispatchCard();
     //绘制发牌动画
     void drawDispatchCard(Player* player,int curPos);
+    //拿到发牌对应的CardPanel（发牌发的是card）
+    void dispatchCardHandle(Player* player, const Cards & cards);
+    //更新扑克牌在窗口的显示
+    void updatePlayerCards(Player* player);
+
+    public slots:
+    void onPlayerStatusChanged(Player* player ,GameControl::PlayerStatus status);
+        void onGrabLordBet(Player* player,int bet,bool isFrist);
 protected:
     void paintEvent(QPaintEvent *event) override;
 
@@ -65,7 +73,7 @@ private:
         CardAlign align;
         //扑克牌显示正面还是背面
         bool isFront;
-        //出牌提示信息
+        //提示信息
         QLabel * info;
         //玩家头像
         QLabel* roleImg;
@@ -82,6 +90,7 @@ private:
     QPoint m_baseCardPos;
     GameControl::GameStatus m_gameStatus;
     QTimer* m_timer;
+    int m_curMovePos;  // 发牌动画当前位移格子数
 
 };
 #endif // GAMEMAINWINDOW_H

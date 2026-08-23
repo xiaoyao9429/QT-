@@ -199,3 +199,9 @@ void Player::startCallLord()
 {
     // 基类默认空实现，由子类（玩家/机器人）重写
 }
+
+void Player::grabLordBet(int bet)
+{
+    emit notifyGravLordBet(this,bet);
+
+}

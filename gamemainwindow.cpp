@@ -43,6 +43,7 @@ GameMainWindow::GameMainWindow(QWidget *parent)
     //实例化定时器
     m_timer=new QTimer(this);
     connect(m_timer, &QTimer::timeout, this, &GameMainWindow::onDispatchCard);
+    m_curMovePos = 0;
 
 }
 
@@ -58,6 +59,9 @@ void GameMainWindow::GameControlInit()
     RobotPlayer* rrobot=m_gameControl->getRightRobot();
     UserPlayer* user=m_gameControl->getUserPlayer();
     m_playerList << lrobot << user<< rrobot;
+
+    connect(m_gameControl,&GameControl::playerStatusChanged,this,&GameMainWindow::onPlayerStatusChanged);
+    connect(m_gameControl,&GameControl::notifyGrabLordBet,this,&GameMainWindow::onGrabLordBet);
 }
 
 void GameMainWindow::initCardMap()
@@ -135,7 +139,9 @@ void GameMainWindow::connectButtonGroup()
 
 
     });
-    connect(ui->buttonGroup,&ButtonGroup::betPoint,this,[=](){});//抢地主
+    connect(ui->buttonGroup,&ButtonGroup::betPoint,this,[=](int bet){
+        m_gameControl->getUserPlayer()->grabLordBet(bet);
+    });//抢地主
     connect(ui->buttonGroup,&ButtonGroup::pass,this,[=](){});//不要
     connect(ui->buttonGroup,&ButtonGroup::playHand,this,[=](){}); //出牌
 }
@@ -232,6 +238,19 @@ void GameMainWindow::gameStatusProcess(GameControl::GameStatus status)
     m_gameStatus=status;
     switch (status) {
     case GameControl::GameStatus::CallingLord:
+        //设置底牌图片
+        {   CardList last3Card=m_gameControl->initialCards().toCardList();//剩下三张底牌
+            for(int i=0;i<last3Card.size();++i){
+                QPixmap front=m_cardMap[last3Card[i]]->image();
+                m_last3Cards[i]->setImage(front);
+
+            }
+
+            //开始叫地主
+            m_gameControl->startCallLord();
+
+        }
+
 
         break;
     case GameControl::GameStatus::DispatchCard:
@@ -268,19 +287,22 @@ void GameMainWindow::dispatchCards()
        m_contextMap[m_playerList[i]].info->hide();
        m_contextMap[m_playerList[i]].roleImg->hide();
        if(i!=1){
-           m_contextMap[m_playerList[i]].isFront=true;
+           m_contextMap[m_playerList[i]].isFront=false;  // 机器人显示牌背
        }
        else
        {
-           m_contextMap[m_playerList[i]].isFront=false;
+           m_contextMap[m_playerList[i]].isFront=true;   // 用户显示牌面
        }
    }
 
    //重置玩家卡牌
    m_gameControl->reset();
 
+   //重置发牌动画位移
+   m_curMovePos = 0;
+
    //启动定时器
-   m_timer->start(10);
+   m_timer->start(15);
 
    //背景音乐;
 
@@ -291,65 +313,162 @@ void GameMainWindow::dispatchCards()
 void GameMainWindow::onDispatchCard()
 {
     //base牌移动到curMovePos*step个像素
-    static int curMovePos=0;
     //当前玩家
     Player* currentPlayer=m_gameControl->getCurrentPlayer();
-    
-    //移动扑克牌到玩家位置
-    curMovePos+=15;
-
-    //绘制发牌动画
-    drawDispatchCard(currentPlayer,curMovePos);
-
-    if(curMovePos>=100)//给当前玩家发一张牌
-    {
-        Card card=m_gameControl->initialCards().takeRandomCard();
-        currentPlayer->addCard(card);
-        m_gameControl->setCurrentPlayer(currentPlayer->nextPlayer());//切换到下家
-        curMovePos=0;
+    if (currentPlayer == nullptr) {
+        m_timer->stop();
+        return;
     }
 
-    if(m_gameControl->initCardsCount()<=3 ){//停止发牌
-        m_timer->stop();//停止定时器
-        gameStatusProcess(GameControl::CallingLord);//切换状态到叫地主阶段
+    // 每一张新牌开始动画前，先把动画牌移动到发牌区并显示
+    if (m_curMovePos == 0) {
+        m_moveCard->move(m_baseCardPos);
+        m_moveCard->show();
+    }
+
+    //移动扑克牌到玩家位置
+    m_curMovePos+=15;
+
+    //绘制发牌动画
+    drawDispatchCard(currentPlayer,m_curMovePos);
+
+    if(m_curMovePos>=100)//给当前玩家发一张牌
+    {
+        Cards& deck = m_gameControl->initialCards();
+        // 只剩 3 张时停止发牌，作为底牌保留，不再分发
+        if (deck.cardCount() <= 3) {
+            m_timer->stop();
+            gameStatusProcess(GameControl::CallingLord);//切换状态到叫地主阶段
+            return;
+        }
+        Card card = deck.takeRandomCard();
+        currentPlayer->addCard(card);
+        dispatchCardHandle(currentPlayer,currentPlayer->cards());
+        m_gameControl->setCurrentPlayer(currentPlayer->nextPlayer());//切换到下家
+        m_curMovePos=0;
     }
 
 }
 
 void GameMainWindow::drawDispatchCard(Player* player,int curPos)
 {
+    int index = m_playerList.indexOf(player);
+    if (index < 0 || index >= m_playerList.size()) {
+        return;
+    }
 
-    //得到每个玩家的放牌区域
-    QRect rect=m_contextMap[player].cradRect;
-    //每个玩家的单元步长step,curMovePos代表格子，step代表每个格子的像素距离
-    int step[]={
-        (m_baseCardPos.x()-rect.right())/100,//左侧机器人
-        (rect.top()-m_baseCardPos.y()-m_basePanel->height())/100,//用户
-        (rect.left()-m_baseCardPos.x()-m_basePanel->width())/100,//右侧机器人
-        
-    };
+    // 分别取出三个玩家的放牌区域
+    QRect leftRect   = m_contextMap[m_playerList[0]].cradRect;
+    QRect userRect   = m_contextMap[m_playerList[1]].cradRect;
+    QRect rightRect  = m_contextMap[m_playerList[2]].cradRect;
 
-    //计算move牌每次移动到的坐标
-    QPoint pos[]={
-        QPoint(m_baseCardPos.x()-curPos*step[0],m_baseCardPos.y()),//左侧机器人
-        QPoint(m_baseCardPos.x(),m_baseCardPos.y()+curPos*step[1]),//用户
-        QPoint(m_baseCardPos.x()+curPos*step[2],m_baseCardPos.y()),//右侧机器人
+    // 直接按 curPos/100 的进度插值，避免 (距离/100)*curPos 的整数除法截断误差
+    int distLeftX  = m_baseCardPos.x() - leftRect.right();                 // 左侧机器人: X方向距离
+    int distUserY  = userRect.top() - m_baseCardPos.y() - m_basePanel->height(); // 用户: Y方向距离
+    int distRightX = rightRect.left() - m_baseCardPos.x() - m_basePanel->width(); // 右侧机器人: X方向距离
+
+    //计算move牌每次移动到的坐标（先乘后除，减少整数除法误差）
+    QPoint pos[] = {
+        QPoint(m_baseCardPos.x() - curPos * distLeftX / 100,  m_baseCardPos.y()),                   // 左侧机器人
+        QPoint(m_baseCardPos.x(),                          m_baseCardPos.y() + curPos * distUserY / 100),  // 用户
+        QPoint(m_baseCardPos.x() + curPos * distRightX / 100, m_baseCardPos.y())                    // 右侧机器人
     };
 
     //移动
-    int index=m_playerList.indexOf(player);
     m_moveCard->move(pos[index]);
 
-    if(curPos==0){
-        m_moveCard->show();
-    }
-
-    //如果移动的距离已超过，则隐藏
-    if(curPos>=100){
+    //如果移动的距离已超过，则隐藏（发牌动画结束，下一张开始时在onDispatchCard中重新show）
+    if (curPos >= 100) {
         m_moveCard->hide();
     }
+}
+
+void GameMainWindow::dispatchCardHandle(Player *player,  const Cards &cards)
+{
+    CardList list=cards.toCardList();
+    for(int i=0;i<list.size();++i){
+        CardPanel* panel=m_cardMap[list[i]];
+        panel->setOwner(player);
+    }
+
+    //在主窗口中显示
+    updatePlayerCards(player);
+
+}
+
+void GameMainWindow::updatePlayerCards(Player *player)
+{
+    Cards cards=player->cards();
+    CardList list=cards.toCardList();
+    //取出放牌区域
+    QRect cardsRect=m_contextMap[player].cradRect;
+    int cradSpace=20;
+    for(int i=0;i<list.size();++i){//效率有点低
+        CardPanel* panel =m_cardMap[list[i]];
+        panel->setFrontSide(m_contextMap[player].isFront);
+        //水平或垂直展示
+        if(m_contextMap[player].align==CardAlign::horizontal)//水平
+        {
+            int leftx=cardsRect.left()+(cardsRect.width()-m_cardSize.width()-(list.size()-1)*cradSpace)/2;
+            int y=cardsRect.top()+(cardsRect.height()-m_cardSize.height())/2;
+            panel->move(leftx+i*cradSpace,y);
+        }
+
+        else{//垂直
+            int topy=cardsRect.top()+(cardsRect.height()-m_cardSize.height()-(list.size()-1)*cradSpace)/2;
+            int x=cardsRect.left()+(cardsRect.width()-m_cardSize.width())/2;
+            panel->move(x,topy+i*cradSpace);
+        }
+
+        panel->show();
+        panel->raise();
+    }
+
+}
+
+void GameMainWindow::onPlayerStatusChanged(Player *player, GameControl::PlayerStatus status)
+{
+    switch (status) {
+    case GameControl::ThinkingForCallLord:
+        if(player==m_gameControl->getUserPlayer()){
+            ui->buttonGroup->selectPage(ButtonGroup::Panel::CallLord);
+        }
+
+        break;
+
+    case GameControl::ThinkingForPlayHand:
+
+        break;
+
+    case GameControl::Winning:
+        break;
+    default:
+        break;
+    }
+}
+
+void GameMainWindow::onGrabLordBet(Player *player, int bet, bool isFrist)
+{
+    //显示抢地主的提示信息
+    PlayerContext context=m_contextMap[player];
+    if(bet==0){//不抢
+        context.info->setPixmap(QPixmap(":/images/buqinag.png"));
+    }
+
+    else if(isFrist){
+        context.info->setPixmap(QPixmap(":/images/jiaodizhu.png"));
+    }
 
 
+    else{
+        context.info->setPixmap(QPixmap(":/images/qiangdizhu.png"));
+    }
+
+    context.info->show();
+
+    //显示叫地主的分数
+
+    //背景音乐
 }
 
 

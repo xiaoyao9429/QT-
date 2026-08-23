@@ -1,13 +1,28 @@
-#ifndef GAMECONTROL_H
+﻿#ifndef GAMECONTROL_H
 #define GAMECONTROL_H
 
 #include <QObject>
 #include <QMap>
 #include "player.h"
 #include "cards.h"
+#include "userplayer.h"
+#include "robotplayer.h"
+struct BetRecord{//存储成为地主的玩家
+    Player* player;
+    int bet;
+    int times;//第几个叫地主
 
-class UserPlayer;
-class RobotPlayer;
+
+    BetRecord(){
+        reset();
+    }
+
+    void reset(){
+        player=nullptr;
+        bet=0;
+        times=0;
+    }
+};
 
 // 游戏控制类：管理玩家、发牌、出牌流程、胜负判定
 class GameControl : public QObject
@@ -22,6 +37,14 @@ public:
         CallingLord,        // 叫地主阶段
         PlayingHand,        // 出牌阶段
         Status_End          // 结束标记
+    };
+
+    // 玩家状态
+    enum PlayerStatus
+    {
+        ThinkingForCallLord,
+        ThinkingForPlayHand,
+        Winning
     };
 
     explicit GameControl(QObject *parent = nullptr);
@@ -75,10 +98,12 @@ public:
     void clearScores();
 
     //得到初始牌组
-    Cards initialCards();
+    Cards& initialCards();
 
     //得到初始牌数量
     int initCardsCount();
+
+
 
 
 signals:
@@ -96,6 +121,15 @@ signals:
     void notifyGameOver(Player* winner);
     // 通知：游戏状态变化
     void notifyGameStatusChanged(GameStatus status);
+    //玩家状态发生变化
+    void playerStatusChanged(Player* player,PlayerStatus status);
+    //通知玩家抢地主
+    void notifyGrabLordBet(Player* player,int bet,bool isFrist);
+
+
+
+public slots:
+    void onGraBet(Player * player ,int bet);
 
 private:
     // 传递出牌权给下家
@@ -119,6 +153,7 @@ private:
     Cards m_bottomCards;            // 底牌（3张）
     int m_lordScore;                // 地主叫分（1/2/3）
     GameStatus m_status;            // 游戏状态
+    BetRecord m_betRecord;
 };
 
 #endif // GAMECONTROL_H

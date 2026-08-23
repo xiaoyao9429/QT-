@@ -1,4 +1,4 @@
-﻿#include "gamecontrol.h"
+#include "gamecontrol.h"
 #include "userplayer.h"
 #include "robotplayer.h"
 #include <QRandomGenerator>
@@ -361,4 +361,14 @@ void GameControl::clearScores()
     m_userPlayer->setScore(0);
     m_leftRobot->setScore(0);
     m_rightRobot->setScore(0);
+}
+
+Cards GameControl::initialCards()
+{
+    return m_initialCards;
+}
+
+int GameControl::initCardsCount()
+{
+    return m_initialCards.toSet().count();
 }

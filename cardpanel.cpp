@@ -1,4 +1,4 @@
-﻿#include "cardpanel.h"
+﻿ #include "cardpanel.h"
 #include <QPainter>
 #include <QMouseEvent>
 

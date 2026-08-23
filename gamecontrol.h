@@ -74,6 +74,12 @@ public:
     //清空所有玩家得分
     void clearScores();
 
+    //得到初始牌组
+    Cards initialCards();
+
+    //得到初始牌数量
+    int initCardsCount();
+
 
 signals:
     // 通知：发牌完成（参数为玩家指针，让 UI 刷新该玩家手牌）
@@ -101,7 +107,7 @@ private:
 
 private:
 
-     Cards m_initialCards;          // 初始牌组（52张）
+    Cards m_initialCards;          // 初始牌组（54张）
     RobotPlayer* m_leftRobot;       // 左侧机器人
     RobotPlayer* m_rightRobot;      // 右侧机器人
     UserPlayer* m_userPlayer;       // 真人玩家

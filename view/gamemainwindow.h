@@ -4,13 +4,13 @@
 #include <QMainWindow>
 #include "gamecontrol.h"
 #include "scorepanel.h"
-#include "gamecontrol.h"
 #include <QVector>
 #include <QMap>
 #include "cardpanel.h"
+#include "dealanimator.h"
 #include <QSize>
 #include <QLabel>
-#include <QTimer>
+
 QT_BEGIN_NAMESPACE
 namespace Ui {
 class GameMainWindow;
@@ -38,18 +38,20 @@ public:
     void gameStatusProcess(GameControl::GameStatus status);
     //发牌
     void dispatchCards();
-    //定时器槽函数,绘制发牌动画
-    void onDispatchCard();
-    //绘制发牌动画
-    void drawDispatchCard(Player* player,int curPos);
     //拿到发牌对应的CardPanel（发牌发的是card）
     void dispatchCardHandle(Player* player, const Cards & cards);
     //更新扑克牌在窗口的显示
     void updatePlayerCards(Player* player);
 
-    public slots:
-    void onPlayerStatusChanged(Player* player ,GameControl::PlayerStatus status);
-        void onGrabLordBet(Player* player,int bet,bool isFrist);
+public slots:
+
+    //轮到某人行动了
+    void onPlayerStatusChanged(Player* player, GameControl::PlayerStatus status);
+    //玩家抢地主后的提示信息
+    void onGrabLordBet(Player* bettor, int bet, bool isFirstCall);
+    // DealAnimator 动画完成回调：一张牌到达玩家位置
+    void onCardArrived(Player* player);
+
 protected:
     void paintEvent(QPaintEvent *event) override;
 
@@ -79,7 +81,6 @@ private:
         QLabel* roleImg;
         //玩家刚出的牌
         Cards lastCard;
-
     };
 
     QMap<Player*,PlayerContext> m_contextMap;
@@ -89,8 +90,7 @@ private:
     CardPanel* m_moveCard;
     QPoint m_baseCardPos;
     GameControl::GameStatus m_gameStatus;
-    QTimer* m_timer;
-    int m_curMovePos;  // 发牌动画当前位移格子数
-
+    DealAnimator* m_animator;
 };
+
 #endif // GAMEMAINWINDOW_H

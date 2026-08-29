@@ -1,4 +1,4 @@
-#ifndef CARDS_H
+﻿#ifndef CARDS_H
 #define CARDS_H
 
 #include <QSet>
@@ -20,6 +20,7 @@ public:
     void add(const Cards& cards);
     // 添加一组卡牌
     void add(const QVector<Card>& cards);
+    void add(const QVector <Cards> & cards);
 
     // 移除单张卡牌
     void remove(const Card& card);
@@ -27,6 +28,7 @@ public:
     void remove(const Cards& cards);
     // 移除一组卡牌
     void remove(const QVector<Card>& cards);
+    void remove(const QVector<Cards>& cards);
 
     // 卡牌数量
     int cardCount() const;

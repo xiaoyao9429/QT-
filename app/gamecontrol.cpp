@@ -10,7 +10,6 @@ GameControl::GameControl(QObject *parent)
     , m_userPlayer(nullptr)
     , m_currentPlayer(nullptr)
     , m_pendPlayer(nullptr)
-    , m_lordScore(0)
     , m_status(Status_Begin)
 {
     playerInit();
@@ -76,12 +75,13 @@ void GameControl::playerInit()
                      this, [this](const Cards& cards){ playerPlayCards(m_leftRobot, cards); });
     QObject::connect(m_rightRobot, &Player::notifyTakeCards,
                      this, [this](const Cards& cards){ playerPlayCards(m_rightRobot, cards); });
-    QObject::connect(m_userPlayer, &Player::notifyTakeCards,
+    QObject::connect(m_userPlayer,&Player::notifyTakeCards,
                      this, [this](const Cards& cards){ playerPlayCards(m_userPlayer, cards); });
 
-    connect(m_userPlayer,&Player::notifyGravLordBet,this,&GameControl::onGraBet);
-    connect(m_leftRobot,&Player::notifyGravLordBet,this,&GameControl::onGraBet);
-    connect(m_rightRobot,&Player::notifyGravLordBet,this,&GameControl::onGraBet);
+    // 机器人叫地主决策：各自 AI 思考后通过 callLordDecided 进入 playerBet 入口
+    // 注：人类玩家不需要这个 connect —— 用户的按钮直接在 MainWindow 调 playerBet()
+    connect(m_leftRobot,   &Player::callLordDecided, this, &GameControl::playerBet);
+    connect(m_rightRobot,  &Player::callLordDecided, this, &GameControl::playerBet);
 }
 
 void GameControl::initCards()
@@ -131,31 +131,7 @@ GameControl::GameStatus GameControl::gameStatus() const
 
 void GameControl::gameStart()
 {
-    // 整局流程：发牌 → 叫地主 → 出牌
-    dispatchCards();
-    // 发完牌后由 UI 触发叫地主流程，或此处直接调用 startCallLord()
-}
-
-void GameControl::dispatchCards()
-{
-    m_status = DispatchCard;
-    emit notifyGameStatusChanged(m_status);
-
-    // 1. 生成一副完整 54 张牌
-    initCards();
-
-    // 2. 给三个玩家各发 17 张
-    m_userPlayer->addCards(m_initialCards.takeRandomCards(17));
-    emit notifyDispatchCards(m_userPlayer);
-
-    m_leftRobot->addCards(m_initialCards.takeRandomCards(17));
-    emit notifyDispatchCards(m_leftRobot);
-
-    m_rightRobot->addCards(m_initialCards.takeRandomCards(17));
-    emit notifyDispatchCards(m_rightRobot);
-
-    // 3. 剩余 3 张作为底牌
-    m_bottomCards = m_initialCards;
+    // 发牌由 UI 端一张张带动画完成，发完 51 张后 UI 调 startCallLord()
 }
 
 Cards GameControl::bottomCards() const
@@ -165,12 +141,10 @@ Cards GameControl::bottomCards() const
 
 void GameControl::startCallLord()
 {
-    // m_status = CallingLord;
-    // emit notifyGameStatusChanged(m_status);
-     // 从当前玩家(默认为用户)开始叫地主
-    m_currentPlayer->startCallLord();
-
-    emit playerStatusChanged(m_currentPlayer,ThinkingForCallLord);
+    m_status = CallingLord;
+    emit notifyGameStatusChanged(m_status);
+    // 从当前玩家(默认为用户)开始叫地主
+    advanceBettor();
 }
 
 void GameControl::becomeLord(Player *player)
@@ -184,67 +158,18 @@ void GameControl::becomeLord(Player *player)
 
     //设置当前玩家(从地主开始出牌)
     m_currentPlayer = player;
+    m_pendPlayer = nullptr;
+    m_pendCards.clear();
+    m_status = PlayingHand;
 
     emit notifyLordConfirmed(player);
 
-    // 进入出牌阶段
-    startPlayCards();
-
-
-    QTimer::singleShot(1000,this,[=](){
-        emit notifyGameStatusChanged(PlayingHand);//通知主窗口游戏状态改变
-        emit playerStatusChanged(m_currentPlayer,ThinkingForPlayHand);//通知主窗口玩家状态改变
-        //准备出牌
+    // 延迟1秒后进入出牌阶段，给UI时间显示地主确认
+    QTimer::singleShot(1000, this, [=](){
+        emit notifyGameStatusChanged(PlayingHand);
+        emit playerStatusChanged(m_currentPlayer, ThinkingForPlayHand);
         m_currentPlayer->preparePlayCards();
     });
-
-}
-
-void GameControl::playerCallLord(Player* player, int score)
-{
-    emit notifyCallLord(player, score);
-
-    if (score > m_lordScore) {
-        m_lordScore = score;
-        m_pendPlayer = player;   // 暂存当前最高叫分玩家
-    }
-
-    // 三家叫完或有人叫 3 分直接确定地主
-    // 此处为简化实现：先按叫分最高者定地主
-    if (score == 3) {
-        // 直接定地主
-        m_pendPlayer->setRole(PlayerRole::Lord);
-        m_pendPlayer->addCards(m_bottomCards);
-        emit notifyLordConfirmed(m_pendPlayer);
-        startPlayCards();
-    } else {
-        // 继续传递到下家叫
-        Player* next = player->nextPlayer();
-        if (next != m_currentPlayer) {
-            next->startCallLord();
-        } else {
-            // 一轮结束，确定地主
-            if (m_pendPlayer && m_lordScore > 0) {
-                m_pendPlayer->setRole(PlayerRole::Lord);
-                m_pendPlayer->addCards(m_bottomCards);
-                emit notifyLordConfirmed(m_pendPlayer);
-                startPlayCards();
-            }
-            // 如果没人叫，则重新发牌（此处简化处理）
-        }
-    }
-}
-
-void GameControl::startPlayCards()
-{
-    m_status = PlayingHand;
-    emit notifyGameStatusChanged(m_status);
-
-    // 地主先出牌
-    m_currentPlayer = m_pendPlayer;
-    m_pendPlayer = nullptr;
-    m_pendCards.clear();
-    m_currentPlayer->preparePlayCards();
 }
 
 void GameControl::playerPlayCards(Player* player, const Cards& cards)
@@ -363,7 +288,6 @@ void GameControl::reset()
     m_pendCards.clear();
     m_pendPlayer = nullptr;
     m_currentPlayer = m_userPlayer;  // 恢复默认当前玩家，不能置空，否则发牌阶段解引用崩溃
-    m_lordScore = 0;
     m_status = Status_Begin;
     clearScores();
     initCards();  // 重新初始化 54 张牌堆
@@ -386,47 +310,66 @@ int GameControl::initCardsCount()
     return m_initialCards.cardCount();
 }
 
-void GameControl::onGraBet(Player *player, int bet)
+int GameControl::getPlayerMaxBet()
 {
-    //通知主界面
-    if(bet>0&&m_betRecord.bet==0)//第一个叫地主的玩家
-    {
-         emit notifyGrabLordBet(player,bet,true);
-    }
+    return m_betRecord.bet;
+}
 
-    else{
-         emit notifyGrabLordBet(player,bet,false);
-    }
-
-    //如果是3分则直接成为地主
-    if(bet==3){
-        m_betRecord.reset();
-        becomeLord(player);
-        m_betRecord.reset();
+void GameControl::playerBet(Player *bettor, int bet)
+{
+    // 只有当前叫地主轮到的人才能叫，忽略其他玩家的乱序调用
+    if (m_status != CallingLord || bettor != m_currentPlayer) {
         return;
     }
 
-    if(m_betRecord.bet<3){
-        m_betRecord.bet=bet,
-        m_betRecord.player=player;
+    // 叫分合法性：0-3
+    if (bet < 0 || bet > 3) {
+        return;
     }
-    m_betRecord.times++;
-    if(m_betRecord.times==3){
-        if(m_betRecord.bet==0){//都没抢，重新发牌
-            emit notifyGameStatusChanged(DispatchCard);
-        }
 
-        else{
+    // 新分必须高于当前最高叫分（否则就是"不抢"，只能传0）
+    if (bet > 0 && bet <= m_betRecord.bet) {
+        bet = 0;
+    }
+
+    // 判断是否是全场第一个叫正分的（决定 UI 显示"叫地主"还是"抢地主"）
+    bool isFirstCall = (bet > 0 && m_betRecord.bet == 0);
+    emit grabLordBetDecided(bettor, bet, isFirstCall);
+
+    // 叫3分直接成为地主
+    if (bet == 3) {
+        m_betRecord.reset();
+        becomeLord(bettor);
+        return;
+    }
+
+    // 记录最高叫分者（只在bet>0时更新，过牌不覆盖）
+    if (bet > 0) {
+        m_betRecord.bet = bet;
+        m_betRecord.player = bettor;
+    }
+
+    m_betRecord.times++;
+    if (m_betRecord.times == 3) {
+        if (m_betRecord.bet == 0) {
+            // 都没叫，重新发牌
+            emit notifyGameStatusChanged(DispatchCard);
+        } else {
             becomeLord(m_betRecord.player);
         }
         m_betRecord.reset();
         return;
     }
-     //如果不是则下家继续抢
-    //切到下家
-    m_currentPlayer=m_currentPlayer->nextPlayer();
-    //通知主界面
-    playerStatusChanged(m_currentPlayer, ThinkingForCallLord);
-    m_currentPlayer->startCallLord();
 
+    // 切到下家继续抢
+    m_currentPlayer = m_currentPlayer->nextPlayer();
+    advanceBettor();
+}
+
+void GameControl::advanceBettor()
+{
+    // 启动当前玩家的叫地主决策，并通知 UI 切换到"轮到他了"的界面
+    // —— startCallLord() 和 playerStatusChanged 收敛到此，避免两处重复
+    m_currentPlayer->startCallLord();
+    emit playerStatusChanged(m_currentPlayer, ThinkingForCallLord);
 }

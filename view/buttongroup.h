@@ -19,7 +19,7 @@ public:
     //初始化按钮组
     void initButtons();
     //page页切换
-    void selectPage(Panel type);
+    void selectPage(Panel type,int curBet=0);
 
 signals:
     //开始游戏

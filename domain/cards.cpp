@@ -1,4 +1,4 @@
-#include "cards.h"
+﻿#include "cards.h"
 #include <algorithm>
 #include <QRandomGenerator>
 
@@ -23,6 +23,13 @@ void Cards::add(const QVector<Card>& cards)
     }
 }
 
+void Cards::add(const QVector<Cards> &cards)
+{
+    for (const Cards& c : cards) {
+        add(c);
+    }
+}
+
 void Cards::remove(const Card& card)
 {
     m_cards.remove(card);
@@ -37,6 +44,13 @@ void Cards::remove(const QVector<Card>& cards)
 {
     for (const Card& card : cards) {
         m_cards.remove(card);
+    }
+}
+
+void Cards::remove(const QVector<Cards> &cards)
+{
+    for (const Cards& c : cards) {
+        remove(c);
     }
 }
 

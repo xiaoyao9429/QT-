@@ -1,4 +1,6 @@
 ﻿#include "robotplayer.h"
+#include <QTimer>
+#include <QRandomGenerator>
 
 RobotPlayer::RobotPlayer(QObject *parent)
     : Player(parent)
@@ -32,10 +34,12 @@ void RobotPlayer::prepareTakeCards()
 
 void RobotPlayer::startCallLord()
 {
-    // 机器人叫地主：根据手牌强弱决定是否叫
-    // 待牌型判断模块实现后，在此处补全决策逻辑
     setIsThinking(true);
-    // TODO: AI 叫地主决策
-    // 临时占位：默认不叫
-    setIsThinking(false);
+    // 简单AI：延迟1秒后随机决定叫几分（0-3）
+    // 后续可替换为基于手牌强度的评估
+    QTimer::singleShot(1000, this, [this]() {
+        int bet = QRandomGenerator::global()->bounded(0, 4);
+        submitCallLord(bet);
+        setIsThinking(false);
+    });
 }

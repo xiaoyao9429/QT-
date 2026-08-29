@@ -1,4 +1,4 @@
-﻿#include "player.h"
+#include "player.h"
 
 Player::Player(QObject *parent)
     : QObject(parent)
@@ -200,8 +200,8 @@ void Player::startCallLord()
     // 基类默认空实现，由子类（玩家/机器人）重写
 }
 
-void Player::grabLordBet(int bet)
+void Player::submitCallLord(int bet)
 {
-    emit notifyGravLordBet(this,bet);
-
+    // 只负责把决策抛给控制器，不做流程判断
+    emit callLordDecided(this, bet);
 }

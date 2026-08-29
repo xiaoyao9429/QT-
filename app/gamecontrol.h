@@ -72,8 +72,6 @@ public:
     // 开始游戏：发牌 → 叫地主 → 出牌
     void gameStart();
 
-    // 发牌：给三个玩家各发 17 张，剩余 3 张作为底牌
-    void dispatchCards();
     // 获取底牌
     Cards bottomCards() const;
 
@@ -81,11 +79,10 @@ public:
     void startCallLord();
     //成为地主
     void becomeLord(Player* player);
-    // 玩家叫地主（score: 0~3 分，0 表示不叫）
-    void playerCallLord(Player* player, int score);
 
-    // 开始出牌
-    void startPlayCards();
+    // 玩家叫地主/抢地主的统一入口（bet: 0不抢, 1-3分）
+    void playerBet(Player* bettor, int bet);
+
     // 玩家出牌
     void playerPlayCards(Player* player, const Cards& cards);
     // 玩家过牌（不要）
@@ -103,14 +100,14 @@ public:
     //得到初始牌数量
     int initCardsCount();
 
+    // 得到玩家下注的最高分数
+    int getPlayerMaxBet();
+
+
 
 
 
 signals:
-    // 通知：发牌完成（参数为玩家指针，让 UI 刷新该玩家手牌）
-    void notifyDispatchCards(Player* player);
-    // 通知：玩家叫地主结果（玩家 + 叫分）
-    void notifyCallLord(Player* player, int score);
     // 通知：地主确定
     void notifyLordConfirmed(Player* landlord);
     // 通知：玩家出牌
@@ -123,13 +120,9 @@ signals:
     void notifyGameStatusChanged(GameStatus status);
     //玩家状态发生变化
     void playerStatusChanged(Player* player,PlayerStatus status);
-    //通知玩家抢地主
-    void notifyGrabLordBet(Player* player,int bet,bool isFrist);
-
-
-
-public slots:
-    void onGraBet(Player * player ,int bet);
+    // 通知 UI：某个玩家刚刚决定了叫地主几分
+    //   bettor: 谁决定的；bet: 几分(0=不抢,1-3)；isFirstCall: 是不是全场第一个叫正分的
+    void grabLordBetDecided(Player* bettor, int bet, bool isFirstCall);
 
 private:
     // 传递出牌权给下家
@@ -138,6 +131,8 @@ private:
     bool checkGameOver();
     // 判定胜负并发出信号
     void settleGame(Player* winner);
+    // 启动当前玩家叫地主决策 + 通知 UI 轮到他了
+    void advanceBettor();
 
 private:
 
@@ -151,7 +146,6 @@ private:
     Cards m_pendCards;              // 待应对的牌
 
     Cards m_bottomCards;            // 底牌（3张）
-    int m_lordScore;                // 地主叫分（1/2/3）
     GameStatus m_status;            // 游戏状态
     BetRecord m_betRecord;
 };

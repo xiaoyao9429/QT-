@@ -12,56 +12,74 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets)
 
-set(PROJECT_SOURCES
-        main.cpp
-        gamemainwindow.cpp
-        gamemainwindow.h
-        gamemainwindow.ui
-        card.cpp
-        card.h
-        cardpanel.cpp
-        cardpanel.h
-        player.cpp
-        player.h
-        cards.cpp
-        cards.h
-        userplayer.cpp
-        userplayer.h
-        robotplayer.cpp
-        robotplayer.h
-        gamecontrol.cpp
-        gamecontrol.h
-        scorepanel.cpp
-        scorepanel.h
-        scorepanel.ui
-        mybutton.h
-        mybutton.cpp
-        # buttongroup.h
-        # buttongroup.cpp
-        # buttongroup.ui
+# === 源文件按层分组 ===
+
+# Domain 层：纯数据模型（Card / Cards / Player 及其派生类）
+set(DOMAIN_SOURCES
+    domain/card.h            domain/card.cpp
+    domain/cards.h           domain/cards.cpp
+    domain/player.h          domain/player.cpp
+    domain/userplayer.h      domain/userplayer.cpp
+    domain/robotplayer.h     domain/robotplayer.cpp
 )
 
-include_directories(${PROJECT_SOURCE_DIR})
+# App 层：游戏状态机与流程控制
+set(APP_SOURCES
+    app/gamecontrol.h        app/gamecontrol.cpp
+)
+
+# View 层：UI 控件与主窗口
+set(VIEW_SOURCES
+    view/gamemainwindow.h    view/gamemainwindow.cpp    view/gamemainwindow.ui
+    view/cardpanel.h         view/cardpanel.cpp
+    view/dealanimator.h      view/dealanimator.cpp
+    view/buttongroup.h       view/buttongroup.cpp       view/buttongroup.ui
+    view/scorepanel.h        view/scorepanel.cpp        view/scorepanel.ui
+    view/mybutton.h          view/mybutton.cpp
+)
+
+set(UTILITY_SOURCES
+    utility/playhand.h    utility/playhand.cpp
+)
+
+
+set(TEST test/test.h)
+
+set(PROJECT_SOURCES
+    main.cpp
+    ${DOMAIN_SOURCES}
+    ${APP_SOURCES}
+    ${VIEW_SOURCES}
+    #${UTILITY_SOURCES}
+    ${TEST}
+    res.qrc
+)
+
+# 每层目录加入 include 路径，使 #include "xxx.h" 无需改动
+include_directories(
+    ${PROJECT_SOURCE_DIR}
+    ${PROJECT_SOURCE_DIR}/domain
+    ${PROJECT_SOURCE_DIR}/app
+    ${PROJECT_SOURCE_DIR}/view
+    #${PROJECT_SOURCE_DIR}/utility
+    ${PROJECT_SOURCE_DIR}/test
+)
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
     qt_add_executable(Landlords
         MANUAL_FINALIZATION
         ${PROJECT_SOURCES}
-        mybutton.h mybutton.cpp
-        buttongroup.h buttongroup.cpp buttongroup.ui
-        res.qrc
+        utility/playhand.h utility/playhand.cpp
+        utility/playhand.cpp utility/playhand.h
+        utility/playhand.cpp utility/playhand.h
+        utility/strategy.h
+        utility/strategy.cpp
     )
-# Define target properties for Android with Qt 6 as:
-#    set_property(TARGET Landlords APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR
-#                 ${CMAKE_CURRENT_SOURCE_DIR}/android)
-# For more information, see https://doc.qt.io/qt-6/qt-add-executable.html#target-creation
 else()
     if(ANDROID)
         add_library(Landlords SHARED
             ${PROJECT_SOURCES}
         )
-# Define properties for Android with Qt 5 after find_package() calls as:
-#    set(ANDROID_PACKAGE_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/android")
     else()
         add_executable(Landlords
             ${PROJECT_SOURCES}
@@ -71,9 +89,6 @@ endif()
 
 target_link_libraries(Landlords PRIVATE Qt${QT_VERSION_MAJOR}::Widgets)
 
-# Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
-# If you are developing for iOS or macOS you should consider setting an
-# explicit, fixed bundle identifier manually though.
 if(${QT_VERSION} VERSION_LESS 6.1.0)
   set(BUNDLE_ID_OPTION MACOSX_BUNDLE_GUI_IDENTIFIER com.example.Landlords)
 endif()

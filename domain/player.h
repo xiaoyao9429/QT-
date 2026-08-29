@@ -129,11 +129,12 @@ public:
     // 虚函数：准备接上家打出的牌（被动跟牌，子类可重写）
     virtual void prepareTakeCards();
 
-    // 虚函数：开始叫地主
+    // 虚函数：准备叫地主
     virtual void startCallLord();
 
-    // 叫地主/抢地主
-    void grabLordBet(int bet);
+    // 子类通过它向控制器提交自己的叫地主决定（bet: 0不抢, 1-3分）
+    // 内部向控制器发出 callLordDecided 信号，不做任何业务判断
+    void submitCallLord(int bet);
 
 signals:
     // 通知将要出牌
@@ -142,8 +143,8 @@ signals:
     void notifyTakeCards(const Cards& cards);
     // 通知不要
     void notifyPass();
-    //通知已经下注
-    void notifyGravLordBet(Player * player ,int bet);
+    // 叫地主决策完成：player 是决策者自己，bet 是叫分(0-3)
+    void callLordDecided(Player* bettor, int bet);
 
 protected:
     QString m_name;             // 名字

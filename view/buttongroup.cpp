@@ -51,8 +51,8 @@ void ButtonGroup::initButtons()
     connect(ui->threeScore,&QPushButton::clicked,this,[=](){emit betPoint(3);});
 
 }
-
-void ButtonGroup::selectPage(Panel Type)
+//只有用户会触发这个函数
+void ButtonGroup::selectPage(Panel Type,int curBet)
 {
 
     switch (Type) {
@@ -62,8 +62,25 @@ void ButtonGroup::selectPage(Panel Type)
     case Panel::Empty:
         ui->stackedWidget->setCurrentWidget(ui->nullPage);
         break;
-    case Panel::CallLord:
+    case Panel::CallLord://只有这个case会用到curBet
         ui->stackedWidget->setCurrentWidget(ui->callLordPage);
+        switch (curBet)
+        {
+        case 0://显示所有按钮
+            
+            break;
+        case 1://显示2,3分按钮
+            ui->oneScore->hide();
+            break;
+
+        case 2://显示3分按钮
+            ui->oneScore->hide();
+            ui->twoScore->hide();
+            break;
+        default:
+            break;
+        }
+
         break;
     case Panel::PassOrPlay:
         ui->stackedWidget->setCurrentWidget(ui->passOrPlayPage);

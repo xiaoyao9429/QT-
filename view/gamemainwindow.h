@@ -10,12 +10,21 @@
 #include "dealanimator.h"
 #include <QSize>
 #include <QLabel>
-
+#include <animationwindow.h>
 QT_BEGIN_NAMESPACE
 namespace Ui {
 class GameMainWindow;
 }
 QT_END_NAMESPACE
+
+enum class AnimationType{
+    SHUNZI,//顺子
+    ZHADAN,//炸弹
+    WANGZHA,//王炸
+    FEIJI,//飞机
+    LIANDUI,//连对
+    BET//抢地主分数
+};
 
 class GameMainWindow : public QMainWindow
 {
@@ -42,6 +51,8 @@ public:
     void dispatchCardHandle(Player* player, const Cards & cards);
     //更新扑克牌在窗口的显示
     void updatePlayerCards(Player* player);
+    //显示各种动画
+    void showAnimationWindow(AnimationType animationtype,int bet=0);
 
 public slots:
 
@@ -63,6 +74,7 @@ private:
     QMap<Card,CardPanel*> m_cardMap;
     QSize m_cardSize;
     QPixmap m_cardBackImage;
+    AnimationWindow* m_animationWindow;
 
     enum class CardAlign{horizontal,vertical};
     struct PlayerContext
@@ -91,6 +103,8 @@ private:
     QPoint m_baseCardPos;
     GameControl::GameStatus m_gameStatus;
     DealAnimator* m_animator;
+
+
 };
 
 #endif // GAMEMAINWINDOW_H

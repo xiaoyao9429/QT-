@@ -10,7 +10,7 @@ Strategy::Strategy(Player *player, const Cards &cards):
 
 Cards Strategy::makeStrategy()
 {
-    // 得到出牌玩家对象以及打出的牌
+    // 得到该回合出牌玩家对象以及打出的牌
     Player* pendPlayer = m_player->pendPlayer();
     Cards pendCards = m_player->pendCards();
 
@@ -99,7 +99,7 @@ Cards Strategy::firstPlay()
 
     if(hasPair)
     {
-        Cards maxPair;
+        Cards maxPair=seqPairArray[0];
         for(int i=0; i<seqPairArray.size(); ++i)
         {
             if(seqPairArray[i].cardCount() > maxPair.cardCount())
@@ -397,7 +397,7 @@ QVector<Cards> Strategy::findCardsByCount(int count)
     QVector<Cards> cardsArray;
     for(CardPoint point = CardPoint::Card_3; point < CardPoint::Card_End; point = CardPoint((int)point+1))
     {
-        if(m_cards.pointCount(point) == count)
+        if(m_cards.pointCount(point) == count)//寻找数量只为count张的点数
         {
             Cards cs;
             cs << findSamePointCards(point, count);

@@ -1,4 +1,4 @@
-#ifndef ROBOTPLAYER_H
+﻿#ifndef ROBOTPLAYER_H
 #define ROBOTPLAYER_H
 
 #include "player.h"
@@ -13,7 +13,7 @@ public:
 
     // 重写：准备主动出牌（AI思考并选择出牌）
     void preparePlayCards() override;
-    // 重写：准备接上家打出的牌（AI思考并选择跟牌或过）
+    // 重写：准备接上次出牌的玩家打出的牌（AI思考并选择跟牌或过）
     void prepareTakeCards() override;
 
     // 重写：开始叫地主（AI判断是否叫地主）

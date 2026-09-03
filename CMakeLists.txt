@@ -40,6 +40,7 @@ set(VIEW_SOURCES
 
 set(UTILITY_SOURCES
     utility/playhand.h    utility/playhand.cpp
+    utility/strategy.h    utility/strategy.cpp
 )
 
 
@@ -50,7 +51,7 @@ set(PROJECT_SOURCES
     ${DOMAIN_SOURCES}
     ${APP_SOURCES}
     ${VIEW_SOURCES}
-    #${UTILITY_SOURCES}
+    ${UTILITY_SOURCES}
     ${TEST}
     res.qrc
 )
@@ -61,7 +62,7 @@ include_directories(
     ${PROJECT_SOURCE_DIR}/domain
     ${PROJECT_SOURCE_DIR}/app
     ${PROJECT_SOURCE_DIR}/view
-    #${PROJECT_SOURCE_DIR}/utility
+    ${PROJECT_SOURCE_DIR}/utility
     ${PROJECT_SOURCE_DIR}/test
 )
 
@@ -69,11 +70,8 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
     qt_add_executable(Landlords
         MANUAL_FINALIZATION
         ${PROJECT_SOURCES}
-        utility/playhand.h utility/playhand.cpp
-        utility/playhand.cpp utility/playhand.h
-        utility/playhand.cpp utility/playhand.h
-        utility/strategy.h
-        utility/strategy.cpp
+        view/animationwindow.h view/animationwindow.cpp view/animationwindow.ui
+
     )
 else()
     if(ANDROID)

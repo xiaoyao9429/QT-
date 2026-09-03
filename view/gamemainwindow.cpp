@@ -1,4 +1,4 @@
-#include "gamemainwindow.h"
+﻿#include "gamemainwindow.h"
 #include "./ui_gamemainwindow.h"
 #include "buttongroup.h"
 #include "robotplayer.h"
@@ -26,6 +26,9 @@ GameMainWindow::GameMainWindow(QWidget *parent)
     m_bkImage.load(path);
     //实例化游戏控制类
     GameControlInit();
+
+    //动画窗口类
+    m_animationWindow=new AnimationWindow(this);
 
     //玩家得分
     ui->scorePanel->setPlayers(m_playerList[0],m_playerList[1],m_playerList[2]);
@@ -261,10 +264,16 @@ void GameMainWindow::gameStatusProcess(GameControl::GameStatus status)
         }
         break;
     case GameControl::GameStatus::DispatchCard:
-        dispatchCards();
+        dispatchCards();//发牌结束后调用gameControl->starCallLoard
         break;
 
     case GameControl::GameStatus::PlayingHand:
+        //延迟一秒隐藏分数动画窗口
+        QTimer::singleShot(1000,this,[=](){
+            this->m_animationWindow->hide();
+        });
+
+        break;
     default:
         break;
     }
@@ -318,6 +327,10 @@ void GameMainWindow::onCardArrived(Player* player)
     // 只剩 3 张时停止发牌，作为底牌保留
     if (deck.cardCount() <= 3) {
         m_animator->stop();
+
+        //隐藏base牌
+        m_basePanel->hide();
+
         // 直接调 startCallLord()，它会 emit notifyGameStatusChanged(CallingLord)
         // → gameStatusProcess(CallingLord) 自动设置底牌图片
         m_gameControl->startCallLord();
@@ -377,6 +390,42 @@ void GameMainWindow::updatePlayerCards(Player *player)
 
 }
 
+void GameMainWindow::showAnimationWindow(AnimationType animationtype,int bet)
+{
+    switch (animationtype) {
+    case AnimationType::BET:
+        m_animationWindow->setFixedSize(160,98);
+        m_animationWindow->move((width()-m_animationWindow->width())/2,(height()-m_animationWindow->height())/2-100);
+        m_animationWindow->setBetImage(bet);
+
+
+        break;
+    case AnimationType::FEIJI:
+        break;
+
+    case AnimationType::LIANDUI:
+
+        break;
+
+    case AnimationType::SHUNZI:
+
+        break;
+
+    case AnimationType::WANGZHA:
+
+        break;
+
+    case AnimationType::ZHADAN:
+
+        break;
+    default:
+        break;
+    }
+
+
+    m_animationWindow->show();
+}
+
 void GameMainWindow::onPlayerStatusChanged(Player *player, GameControl::PlayerStatus status)
 {
     switch (status) {
@@ -414,6 +463,7 @@ void GameMainWindow::onGrabLordBet(Player *bettor, int bet, bool isFirstCall)
     context.info->show();
 
     //显示叫地主的分数
+    showAnimationWindow(AnimationType::BET,bet);
 
     //背景音乐
 }

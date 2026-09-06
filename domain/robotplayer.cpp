@@ -23,9 +23,9 @@ void RobotPlayer::preparePlayCards()
         Cards outCards = st.makeStrategy();
         setIsThinking(false);
         if (outCards.isEmpty()) {
-            emit notifyPass();
+            emit notifyPass(this);
         } else {
-            emit notifyPlayCards(outCards);
+            emit notifyPlayCards(this, outCards);
         }
     });
 }
@@ -42,9 +42,9 @@ void RobotPlayer::prepareTakeCards()
         Cards beatCards = st.makeStrategy();
         setIsThinking(false);
         if (beatCards.isEmpty()) {
-            emit notifyPass();
+            emit notifyPass(this);
         } else {
-            emit notifyTakeCards(beatCards);
+            emit notifyTakeCards(this, beatCards);
         }
     });
 }
@@ -52,9 +52,9 @@ void RobotPlayer::prepareTakeCards()
 void RobotPlayer::startCallLord()
 {
     setIsThinking(true);
-    // 简单AI：延迟1秒后随机决定叫几分（0-3）
+    // 简单AI：延迟1.5秒后随机决定叫几分（0-3）
     // 后续可替换为基于手牌强度的评估
-    QTimer::singleShot(2000, this, [this]() {
+    QTimer::singleShot(1500, this, [this]() {
         int bet = QRandomGenerator::global()->bounded(0, 4);
         submitCallLord(bet);
         setIsThinking(false);

@@ -1,4 +1,4 @@
-#ifndef USERPLAYER_H
+﻿#ifndef USERPLAYER_H
 #define USERPLAYER_H
 
 #include "player.h"

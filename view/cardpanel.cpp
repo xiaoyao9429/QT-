@@ -1,4 +1,4 @@
-﻿ #include "cardpanel.h"
+﻿#include "cardpanel.h"
 #include <QPainter>
 #include <QMouseEvent>
 
@@ -47,7 +47,13 @@ bool CardPanel::frontSide() const
 
 void CardPanel::setSelected(bool selected)
 {
+    if (m_selected == selected) {
+        return;
+    }
     m_selected = selected;
+    // 位移作用于控件本身：选中整体上移10px，取消落回
+    // （paintEvent 内部平移无效：控件尺寸固定为图片大小，只会裁剪内容看不出移动）
+    move(x(), y() + (selected ? -10 : 10));
     update();
 }
 
@@ -89,13 +95,8 @@ void CardPanel::paintEvent(QPaintEvent* event)
         return;
     }
 
-    // 选中的牌向上偏移10个像素
-    int yOffset = m_selected ? -10 : 0;
-
-    // 绘制卡牌图片，自适应窗口大小
-    QRect drawRect = rect();
-    drawRect.translate(0, yOffset);
-    painter.drawPixmap(drawRect, pixmap);
+    // 绘制卡牌图片，自适应窗口大小（选中的上浮由 setSelected 移动控件实现）
+    painter.drawPixmap(rect(), pixmap);
 }
 
 void CardPanel::mousePressEvent(QMouseEvent* event)

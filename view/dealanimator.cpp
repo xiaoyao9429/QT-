@@ -1,4 +1,4 @@
-#include "dealanimator.h"
+﻿#include "dealanimator.h"
 #include "cardpanel.h"
 #include "player.h"
 

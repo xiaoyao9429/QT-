@@ -61,10 +61,16 @@ public:
     RobotPlayer* getRightRobot() const;
     UserPlayer* getUserPlayer() const;
 
-    // 获取当前玩家（轮到出牌的玩家）
+    // 获取游戏当前玩家（轮到出牌的玩家）
     Player* getCurrentPlayer() const;
     // 设置当前玩家
     void setCurrentPlayer(Player* player);
+
+    //获取上一轮出牌的玩家
+    Player* getPendPlayer() const;
+
+    //获取上一轮牌
+    Cards getPendCards() const;
 
     // 获取游戏状态
     GameStatus gameStatus() const;
@@ -84,7 +90,7 @@ public:
     void playerBet(Player* bettor, int bet);
 
     // 玩家出牌
-    void playerPlayCards(Player* player, const Cards& cards);
+    void playerPlayCards(Player* player,Cards& cards);
     // 玩家过牌（不要）
     void playerPass(Player* player);
 
@@ -111,7 +117,7 @@ signals:
     // 通知：地主确定
     void notifyLordConfirmed(Player* landlord);
     // 通知：玩家出牌
-    void notifyPlayCards(Player* player, const Cards& cards);
+    void notifyPlayCards(Player* player, Cards& cards);
     // 通知：玩家过牌
     void notifyPass(Player* player);
     // 通知：游戏结束，胜者为 winner
@@ -147,6 +153,7 @@ private:
 
     Cards m_bottomCards;            // 底牌（3张）
     GameStatus m_status;            // 游戏状态
+    int m_gameScore;                //游戏分数
     BetRecord m_betRecord;
 };
 

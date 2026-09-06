@@ -1,4 +1,4 @@
-#include "card.h"
+﻿#include "card.h"
 
 Card::Card()
     : m_point(CardPoint::Card_Begin)

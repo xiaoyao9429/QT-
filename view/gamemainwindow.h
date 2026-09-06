@@ -53,6 +53,10 @@ public:
     void updatePlayerCards(Player* player);
     //显示各种动画
     void showAnimationWindow(AnimationType animationtype,int bet=0);
+    //出牌前的一些ui动作
+    void preparePlayingHand();
+    //更新分数面板
+    void updateScorePanel();
 
 public slots:
 
@@ -62,6 +66,16 @@ public slots:
     void onGrabLordBet(Player* bettor, int bet, bool isFirstCall);
     // DealAnimator 动画完成回调：一张牌到达玩家位置
     void onCardArrived(Player* player);
+    //玩家出牌：在出牌区显示打出的牌
+    void onPlayCards(Player* player, Cards& cards);
+    //玩家不要：在出牌区显示"不要"
+    void onPass(Player* player);
+    //地主确定：显示地主角色标识、翻开底牌等
+    void onLordConfirmed(Player* landlord);
+    //游戏结束：显示胜负结算
+    void onGameOver(Player* winner);
+    //点击手牌：切换选中状态
+    void onCardClicked(CardPanel* panel);
 
 protected:
     void paintEvent(QPaintEvent *event) override;
@@ -103,6 +117,8 @@ private:
     QPoint m_baseCardPos;
     GameControl::GameStatus m_gameStatus;
     DealAnimator* m_animator;
+    QSet<CardPanel*> m_selectCardPanels;
+
 
 
 };

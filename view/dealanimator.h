@@ -1,4 +1,4 @@
-#ifndef DEALANIMATOR_H
+﻿#ifndef DEALANIMATOR_H
 #define DEALANIMATOR_H
 
 #include <QObject>

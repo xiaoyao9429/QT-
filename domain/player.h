@@ -137,12 +137,12 @@ public:
     void submitCallLord(int bet);
 
 signals:
-    // 通知将要出牌
-    void notifyPlayCards(const Cards& cards);
-    // 通知将要接牌
-    void notifyTakeCards(const Cards& cards);
-    // 通知不要
-    void notifyPass();
+    // 通知将要出牌（player: 出牌者自己）
+    void notifyPlayCards(Player* player,  Cards& cards);
+    // 通知将要接牌（player: 接牌者自己）
+    void notifyTakeCards(Player* player,  Cards& cards);
+    // 通知不要（player: 不要的玩家自己）
+    void notifyPass(Player* player);
     // 叫地主决策完成：player 是决策者自己，bet 是叫分(0-3)
     void callLordDecided(Player* bettor, int bet);
 

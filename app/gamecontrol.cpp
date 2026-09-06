@@ -3,6 +3,7 @@
 #include "robotplayer.h"
 #include <QRandomGenerator>
 #include <QTimer>
+#include "playhand.h"
 GameControl::GameControl(QObject *parent)
     : QObject(parent)
     , m_leftRobot(nullptr)
@@ -11,6 +12,7 @@ GameControl::GameControl(QObject *parent)
     , m_currentPlayer(nullptr)
     , m_pendPlayer(nullptr)
     , m_status(Status_Begin)
+    , m_gameScore(500)
 {
     playerInit();
     initCards();
@@ -59,24 +61,18 @@ void GameControl::playerInit()
     m_rightRobot->setPrevPlayer(m_userPlayer);
     m_rightRobot->setNextPlayer(m_leftRobot);
 
-    // 连接玩家信号到本控制类（显式限定 QObject::connect 避免命名遮蔽）
-    QObject::connect(m_leftRobot, &Player::notifyPlayCards,
-                     this, [this](const Cards& cards){ playerPlayCards(m_leftRobot, cards); });
-    QObject::connect(m_rightRobot, &Player::notifyPlayCards,
-                     this, [this](const Cards& cards){ playerPlayCards(m_rightRobot, cards); });
-    QObject::connect(m_userPlayer, &Player::notifyPlayCards,
-                     this, [this](const Cards& cards){ playerPlayCards(m_userPlayer, cards); });
+    // 玩家出牌/不要/接牌信号直连到控制入口（信号自带 player 参数，无需 lambda 中转）
+    QObject::connect(m_leftRobot, &Player::notifyPlayCards, this, &GameControl::playerPlayCards);
+    QObject::connect(m_rightRobot, &Player::notifyPlayCards, this, &GameControl::playerPlayCards);
+    QObject::connect(m_userPlayer, &Player::notifyPlayCards, this, &GameControl::playerPlayCards);
 
-    QObject::connect(m_leftRobot, &Player::notifyPass, this, [this](){ playerPass(m_leftRobot); });
-    QObject::connect(m_rightRobot, &Player::notifyPass, this, [this](){ playerPass(m_rightRobot); });
-    QObject::connect(m_userPlayer, &Player::notifyPass, this, [this](){ playerPass(m_userPlayer); });
+    QObject::connect(m_leftRobot, &Player::notifyPass, this, &GameControl::playerPass);
+    QObject::connect(m_rightRobot, &Player::notifyPass, this, &GameControl::playerPass);
+    QObject::connect(m_userPlayer, &Player::notifyPass, this, &GameControl::playerPass);
 
-    QObject::connect(m_leftRobot, &Player::notifyTakeCards,
-                     this, [this](const Cards& cards){ playerPlayCards(m_leftRobot, cards); });
-    QObject::connect(m_rightRobot, &Player::notifyTakeCards,
-                     this, [this](const Cards& cards){ playerPlayCards(m_rightRobot, cards); });
-    QObject::connect(m_userPlayer,&Player::notifyTakeCards,
-                     this, [this](const Cards& cards){ playerPlayCards(m_userPlayer, cards); });
+    QObject::connect(m_leftRobot, &Player::notifyTakeCards, this, &GameControl::playerPlayCards);
+    QObject::connect(m_rightRobot, &Player::notifyTakeCards, this, &GameControl::playerPlayCards);
+    QObject::connect(m_userPlayer, &Player::notifyTakeCards, this, &GameControl::playerPlayCards);
 
     // 机器人叫地主决策：各自 AI 思考后通过 callLordDecided 进入 playerBet 入口
     // 注：人类玩家不需要这个 connect —— 用户的按钮直接在 MainWindow 调 playerBet()
@@ -124,6 +120,16 @@ void GameControl::setCurrentPlayer(Player* player)
     m_currentPlayer = player;
 }
 
+Player* GameControl::getPendPlayer() const
+{
+    return m_pendPlayer;
+}
+
+Cards GameControl::getPendCards() const
+{
+    return m_pendCards;
+}
+
 GameControl::GameStatus GameControl::gameStatus() const
 {
     return m_status;
@@ -141,6 +147,10 @@ Cards GameControl::bottomCards() const
 
 void GameControl::startCallLord()
 {
+    // 牌堆中剩余的3张即为底牌（只复制不移除：UI 显示顶部底牌仍读 initialCards()）
+    m_bottomCards.clear();
+    m_bottomCards.add(m_initialCards);
+
     m_status = CallingLord;
     emit notifyGameStatusChanged(m_status);
     // 从当前玩家(默认为用户)开始叫地主
@@ -152,6 +162,8 @@ void GameControl::becomeLord(Player *player)
     player->setRole(PlayerRole::Lord);
     // 地主获得底牌
     player->addCards(m_bottomCards);
+
+
     //设置农民
     player->nextPlayer()->setRole(PlayerRole::Farmer);
     player->prevPlayer()->setRole(PlayerRole::Farmer);
@@ -172,7 +184,7 @@ void GameControl::becomeLord(Player *player)
     });
 }
 
-void GameControl::playerPlayCards(Player* player, const Cards& cards)
+void GameControl::playerPlayCards(Player* player,Cards& cards)
 {
     // 真正执行出牌：从手牌移除
     player->playCards(cards);
@@ -183,6 +195,13 @@ void GameControl::playerPlayCards(Player* player, const Cards& cards)
 
     // 通知 UI 显示出牌
     emit notifyPlayCards(player, cards);
+
+    //cards是炸弹,游戏分数翻倍
+    PlayHand playhand(cards);
+    PlayHand::HandType type=playhand.getHandType();
+    if(type==PlayHand::Hand_Bomb||type==PlayHand::Hand_Bomb_Jokers){
+        m_gameScore*=2;
+    }
 
     // 检查是否游戏结束
     if (checkGameOver()) {
@@ -196,6 +215,7 @@ void GameControl::playerPlayCards(Player* player, const Cards& cards)
 
 void GameControl::playerPass(Player* player)
 {
+    //通知ui
     emit notifyPass(player);
 
     // 检查是否所有人都过了（即回到打出待应对牌的玩家）
@@ -203,16 +223,16 @@ void GameControl::playerPass(Player* player)
     if (next == m_pendPlayer) {
         // 一轮过完，m_pendPlayer 重新主动出牌
         m_currentPlayer = m_pendPlayer;
-        m_pendCards.clear();
-        m_pendPlayer = nullptr;
+
+
+        m_pendCards.clear();//不出->打出的是空牌
+        m_pendPlayer = player;
+
+        emit playerStatusChanged(m_currentPlayer, ThinkingForPlayHand);
         m_currentPlayer->preparePlayCards();
     } else {
         // 继续给下家
-        m_currentPlayer = next;
-        // 把待应对信息同步给下家
-        m_currentPlayer->setPendCards(m_pendCards);
-        m_currentPlayer->setPendPlayer(m_pendPlayer);
-        m_currentPlayer->prepareTakeCards();
+        passTurnToNext();
     }
 }
 
@@ -221,6 +241,8 @@ void GameControl::passTurnToNext()
     m_currentPlayer = m_currentPlayer->nextPlayer();
     m_currentPlayer->setPendCards(m_pendCards);
     m_currentPlayer->setPendPlayer(m_pendPlayer);
+    // 通知 UI 轮到谁出牌/接牌了（用户回合要显示出牌按钮组）
+    emit playerStatusChanged(m_currentPlayer, ThinkingForPlayHand);
     m_currentPlayer->prepareTakeCards();
 }
 
@@ -240,32 +262,43 @@ bool GameControl::checkGameOver()
 
 void GameControl::settleGame(Player* winner)
 {
-    winner->setIsWin(true);
+    Player* lord = nullptr;      // 地主
+    Player* farmer1 = nullptr;   // 农民1
+    Player* farmer2 = nullptr;   // 农民2
 
-    // 根据角色判定其他玩家胜负
     if (winner->role() == PlayerRole::Lord) {
-        // 地主赢，农民全输
-        m_leftRobot->setIsWin(false);
-        m_rightRobot->setIsWin(false);
+        // 出完牌的是地主：地主赢，上下家两个农民输
+        lord = winner;
+        farmer1 = winner->prevPlayer();
+        farmer2 = winner->nextPlayer();
+
+        lord->setIsWin(true);
+        farmer1->setIsWin(false);
+        farmer2->setIsWin(false);
     } else {
-        // 农民赢，地主输
-        // 找出地主
-        Player* landlord = nullptr;
-        if (m_userPlayer->role() == PlayerRole::Lord) {
-            landlord = m_userPlayer;
-            m_leftRobot->setIsWin(true);
-            m_rightRobot->setIsWin(true);
-        } else if (m_leftRobot->role() == PlayerRole::Lord) {
-            landlord = m_leftRobot;
-            m_userPlayer->setIsWin(true);
-            m_rightRobot->setIsWin(true);
+        // 出完牌的是农民：在它上下家里找地主，地主输，两个农民赢
+        farmer1 = winner;
+        if (winner->prevPlayer()->role() == PlayerRole::Lord) {
+            lord = winner->prevPlayer();
+            farmer2 = winner->nextPlayer();
         } else {
-            landlord = m_rightRobot;
-            m_userPlayer->setIsWin(true);
-            m_leftRobot->setIsWin(true);
+            lord = winner->nextPlayer();
+            farmer2 = winner->prevPlayer();
         }
-        landlord->setIsWin(false);
+
+        lord->setIsWin(false);
+        farmer1->setIsWin(true);
+        farmer2->setIsWin(true);
     }
+
+    // 通知 UI
+    emit playerStatusChanged(winner, Winning);
+
+    // 计算分数：地主赢→地主+2倍、农民各-1倍；地主输→地主-2倍、农民各+1倍
+    bool lordWins = lord->isWin();
+    lord->setScore(lord->score() + (lordWins ? 2 * m_gameScore : -2 * m_gameScore));
+    farmer1->setScore(farmer1->score() + (lordWins ? -m_gameScore : m_gameScore));
+    farmer2->setScore(farmer2->score() + (lordWins ? -m_gameScore : m_gameScore));
 
     emit notifyGameOver(winner);
 }
@@ -289,6 +322,7 @@ void GameControl::reset()
     m_pendPlayer = nullptr;
     m_currentPlayer = m_userPlayer;  // 恢复默认当前玩家，不能置空，否则发牌阶段解引用崩溃
     m_status = Status_Begin;
+    m_gameScore = 500;               // 重置本局游戏分数（炸弹翻倍不累积到下一局）
     clearScores();
     initCards();  // 重新初始化 54 张牌堆
 }

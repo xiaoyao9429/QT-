@@ -5,6 +5,8 @@
 #include "userplayer.h"
 #include <QPainter>
 #include <QRandomGenerator>
+#include <QMouseEvent>
+#include <QRubberBand>
 #include "cards.h"
 #include "playhand.h"
 #include "QPoint"
@@ -56,6 +58,8 @@ GameMainWindow::GameMainWindow(QWidget *parent)
     m_animator->setTargetPos(m_playerList[1], QPoint(m_baseCardPos.x(), userRect.top() - m_cardSize.height()));
     m_animator->setTargetPos(m_playerList[2], QPoint(rightRect.left() - m_cardSize.width(), m_baseCardPos.y()));
     connect(m_animator, &DealAnimator::cardArrived, this, &GameMainWindow::onCardArrived);
+
+
 
 }
 
@@ -370,6 +374,12 @@ void GameMainWindow::dispatchCardHandle(Player *player,  const Cards &cards)
 
 void GameMainWindow::updatePlayerCards(Player *player)
 {
+
+    int stx=0;
+    int sty=0;
+    m_cardsRect=QRect();
+    m_cardRectMap.clear();
+
     Cards cards=player->cards();
     CardList list=cards.toCardList();
     //取出放牌区域
@@ -385,7 +395,17 @@ void GameMainWindow::updatePlayerCards(Player *player)
         {
             int leftx=cardsRect.left()+(cardsRect.width()-m_cardSize.width()-(list.size()-1)*cradSpace)/2;
             int y=cardsRect.top()+(cardsRect.height()-m_cardSize.height())/2;
+            stx=leftx;
+            sty=y;
             panel->move(leftx+i*cradSpace,y);
+            if(i==list.size()-1){
+                m_cardRectMap.insert(panel,QRect(leftx+i*cradSpace,y,m_cardSize.width(),m_cardSize.height()));
+            }
+
+            else{
+                m_cardRectMap.insert(panel,QRect(leftx+i*cradSpace,y,cradSpace,m_cardSize.height()));
+            }
+
         }
 
         else{//垂直
@@ -396,9 +416,15 @@ void GameMainWindow::updatePlayerCards(Player *player)
 
         panel->show();
         panel->raise();
-        QRect rect;
+
 
     }
+    if(m_contextMap[player].align==CardAlign::horizontal){
+         m_cardsRect=QRect(stx,sty,(list.size()-1)*cradSpace+m_cardSize.width(),m_cardSize.height());
+    }
+
+
+
 
 }
 
@@ -721,6 +747,31 @@ void GameMainWindow::onCardClicked(CardPanel* panel)
     }
 
 }
+
+
+void GameMainWindow::mouseMoveEvent(QMouseEvent *event)
+{
+    Q_UNUSED(event)
+    if(event->buttons() & Qt::LeftButton)
+    {
+        QPoint pt = event->pos();
+        QList<CardPanel*> list = m_cardRectMap.keys();
+        static CardPanel*  current;
+        for(int i=0; i<list.size(); ++i)
+        {
+            CardPanel* panel = list.at(i);
+
+            if(m_cardRectMap[panel].contains(pt) &&current != panel)
+            {
+                    // 点击这张扑克牌
+                    onCardClicked(panel);
+                    current= panel;
+            }
+        }
+
+    }
+}
+
 
 void GameMainWindow::paintEvent(QPaintEvent *event)
 {

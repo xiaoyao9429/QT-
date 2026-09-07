@@ -11,6 +11,8 @@
 #include <QSize>
 #include <QLabel>
 #include <animationwindow.h>
+
+
 QT_BEGIN_NAMESPACE
 namespace Ui {
 class GameMainWindow;
@@ -79,7 +81,8 @@ public slots:
 
 protected:
     void paintEvent(QPaintEvent *event) override;
-
+    //批量框选
+    void mouseMoveEvent(QMouseEvent *event) override;
 private:
     Ui::GameMainWindow * ui;
     GameControl* m_gameControl;
@@ -118,6 +121,10 @@ private:
     GameControl::GameStatus m_gameStatus;
     DealAnimator* m_animator;
     QSet<CardPanel*> m_selectCardPanels;
+
+    //用户剩余手牌所占的rect
+    QRect m_cardsRect;
+    QHash<CardPanel*,QRect> m_cardRectMap;
 
 
 

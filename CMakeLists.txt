@@ -1,4 +1,4 @@
-﻿cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.16)
 
 project(Landlords VERSION 0.1 LANGUAGES CXX)
 
@@ -86,6 +86,22 @@ else()
 endif()
 
 target_link_libraries(Landlords PRIVATE Qt${QT_VERSION_MAJOR}::Widgets)
+
+# ===== 构建前自动归一化源文件 UTF-8 BOM（防止重复 BOM 导致 stray '#' 编译错误）=====
+# 自定义 target 每次构建先执行：扫描所有 .h/.cpp，保证开头恰好一个 BOM
+# 脚本只重写需要修复的文件，BOM 已正确的文件不动时间戳，不会触发无意义重编译
+if(WIN32)
+    set(POWERSHELL_EXE powershell)
+    add_custom_target(normalize_bom ALL
+        COMMAND ${POWERSHELL_EXE} -NoProfile -ExecutionPolicy Bypass
+                -File "${CMAKE_SOURCE_DIR}/scripts/normalize_bom.ps1"
+                -Root "${CMAKE_SOURCE_DIR}"
+        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+        COMMENT "Normalizing UTF-8 BOM in source files"
+        VERBATIM
+    )
+    add_dependencies(Landlords normalize_bom)
+endif()
 
 if(${QT_VERSION} VERSION_LESS 6.1.0)
   set(BUNDLE_ID_OPTION MACOSX_BUNDLE_GUI_IDENTIFIER com.example.Landlords)

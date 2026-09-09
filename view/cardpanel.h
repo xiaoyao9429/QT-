@@ -45,6 +45,8 @@ protected:
     void paintEvent(QPaintEvent* event) override;
     // 鼠标按下事件：发出卡牌点击信号
     void mousePressEvent(QMouseEvent* event) override;
+    // 鼠标移动事件：空实现（实验：验证事件默认 accepted 后不再向父窗口传播）
+    //void mouseMoveEvent(QMouseEvent* event) override;
 
 signals:
     // 卡牌被点击信号

@@ -59,6 +59,10 @@ public:
     void preparePlayingHand();
     //更新分数面板
     void updateScorePanel();
+    //处理玩家出牌
+    void onUserPlayHand();
+    //处理玩家不要
+    void onUserPass();
 
 public slots:
 

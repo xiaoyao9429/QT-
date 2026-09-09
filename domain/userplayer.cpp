@@ -13,6 +13,7 @@ void UserPlayer::preparePlayCards()
     // 真人玩家：轮到自己主动出牌
     // 此处只做状态标记，由外部UI响应后处理
     setIsThinking(true);
+
 }
 
 void UserPlayer::prepareTakeCards()

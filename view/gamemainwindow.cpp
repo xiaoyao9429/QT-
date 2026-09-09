@@ -170,8 +170,8 @@ void GameMainWindow::connectButtonGroup()
         // 用户点击按钮：直接提交给 GameControl 的统一入口，不再走 Player 中转
         m_gameControl->playerBet(m_gameControl->getUserPlayer(), bet);
     });//抢地主
-    connect(ui->buttonGroup,&ButtonGroup::pass,this,[=](){});//不要
-    connect(ui->buttonGroup,&ButtonGroup::playHand,this,[=](){}); //出牌
+    connect(ui->buttonGroup,&ButtonGroup::pass,this,&GameMainWindow::onUserPass);//不要
+    connect(ui->buttonGroup,&ButtonGroup::playHand,this,&GameMainWindow::onUserPlayHand); //出牌
 }
 
 void GameMainWindow::initPlayerContext()
@@ -377,8 +377,12 @@ void GameMainWindow::updatePlayerCards(Player *player)
 
     int stx=0;
     int sty=0;
-    m_cardsRect=QRect();
-    m_cardRectMap.clear();
+
+    if(player==m_gameControl->getUserPlayer()){
+        m_cardsRect=QRect();
+        m_cardRectMap.clear();
+    }
+
 
     Cards cards=player->cards();
     CardList list=cards.toCardList();
@@ -393,6 +397,8 @@ void GameMainWindow::updatePlayerCards(Player *player)
         //水平或垂直展示
         if(m_contextMap[player].align==CardAlign::horizontal)//水平
         {
+
+
             int leftx=cardsRect.left()+(cardsRect.width()-m_cardSize.width()-(list.size()-1)*cradSpace)/2;
             int y=cardsRect.top()+(cardsRect.height()-m_cardSize.height())/2;
             stx=leftx;
@@ -542,6 +548,72 @@ void GameMainWindow::updateScorePanel()
     ui->scorePanel->setScore(m_gameControl->getRightRobot(),m_gameControl->getRightRobot()->score());
 }
 
+void GameMainWindow::onUserPlayHand()
+{
+    //判断游戏状态
+    if(m_gameStatus!=GameControl::GameStatus::PlayingHand) return ;
+
+    //没选牌
+    if(m_selectCardPanels.size()==0) return ;
+
+    Cards cards;
+
+    //得到牌型，判断能不能打出
+    for(QSet<CardPanel*>::Iterator it=m_selectCardPanels.begin();it!=m_selectCardPanels.end();++it){
+        cards.add((*it)->card());
+    }
+
+    //不存在的牌型
+    PlayHand playhand(cards);
+    if(playhand.getHandType()==PlayHand::Hand_Unknown) return;
+
+    //上一轮是用户自己，或者是第一轮出牌
+    if(m_gameControl->getPendPlayer()==m_gameControl->getUserPlayer()||m_gameControl->getPendPlayer()==nullptr) {
+        //无限制, //用户直接调槽函数了，应该可以优化成信号，先todo
+         m_gameControl->playerPlayCards(m_gameControl->getUserPlayer(),cards);
+    }
+
+    else{
+        Cards cs=m_gameControl->getPendCards();
+        PlayHand p(cs);
+        if(playhand.canBeat(p)){
+            //用户直接调槽函数了，应该可以优化成信号，先todo
+            m_gameControl->playerPlayCards(m_gameControl->getUserPlayer(),cards);
+        }
+
+        else{//压不过，打不了
+            return ;
+        }
+    }
+
+    //清空选择的牌
+    m_selectCardPanels.clear();
+
+
+    ui->buttonGroup->selectPage(ButtonGroup::Panel::Empty);
+
+
+}
+
+void GameMainWindow::onUserPass()
+{
+    //打出空牌
+    Cards empty;
+    m_gameControl->playerPass(m_gameControl->getUserPlayer());
+
+
+    //用户可能选择了一些牌，但是点击了不要
+    for(auto it=m_selectCardPanels.begin();it!=m_selectCardPanels.end();++it){
+        (*it)->setSelected(false);
+    }
+
+    m_selectCardPanels.clear();
+    updatePlayerCards(m_gameControl->getUserPlayer());
+
+
+
+}
+
 void GameMainWindow::onPlayerStatusChanged(Player *player, GameControl::PlayerStatus status)
 {
     switch (status) {
@@ -553,20 +625,25 @@ void GameMainWindow::onPlayerStatusChanged(Player *player, GameControl::PlayerSt
         break;
 
     case GameControl::ThinkingForPlayHand:
+
         //轮到用户出牌/接牌时，显示"出牌/不要"按钮组
         if(player==m_gameControl->getUserPlayer()){
-            //隐藏上一轮打出的牌
-            auto it =m_contextMap.find(player);
-            if(!it->lastCard.isEmpty()){
-            QVector<Card> lastList=it->lastCard.toCardList();
-            for(auto f : lastList){
-                m_cardMap[f]->hide();
-                }
-            }
 
-            else{
-                 it->info->hide();//隐藏 “不要”
-             }
+            {
+                //隐藏上一轮打出的牌
+                auto itt =m_contextMap.find(player);
+                if(!itt->lastCard.isEmpty()){
+                    QVector<Card> lastList=itt->lastCard.toCardList();
+                    for(auto f : lastList){
+                        m_cardMap[f]->hide();
+                    }
+                }
+
+                else{
+                    itt->info->hide();//隐藏 “不要”
+                }
+
+            }
 
             if(m_gameControl->getPendPlayer()==player||m_gameControl->getPendPlayer()==nullptr)
             {
@@ -582,6 +659,8 @@ void GameMainWindow::onPlayerStatusChanged(Player *player, GameControl::PlayerSt
         else{
             ui->buttonGroup->selectPage(ButtonGroup::Panel::Empty);
         }
+
+
 
         break;
 
@@ -628,6 +707,8 @@ void GameMainWindow::onGrabLordBet(Player *bettor, int bet, bool isFirstCall)
 
 void GameMainWindow::onPlayCards(Player* player,  Cards& cards)
 {
+
+
     //      在 player 的出牌区(playHandRect)绘制打出的牌
     //      可用 m_contextMap[player].playHandRect 获取位置，m_cardMap[card] 获取牌面板
     QRect rect=m_contextMap[player].playHandRect;
@@ -652,6 +733,24 @@ void GameMainWindow::onPlayCards(Player* player,  Cards& cards)
         }
     }
 
+    if(player!=m_gameControl->getUserPlayer()){
+
+        {
+            //隐藏上一轮打出的牌
+            auto itt =m_contextMap.find(player);
+            if(!itt->lastCard.isEmpty()){
+                QVector<Card> lastList=itt->lastCard.toCardList();
+                for(auto f : lastList){
+                    m_cardMap[f]->hide();
+                }
+            }
+
+            else{
+                itt->info->hide();//隐藏 “不要”
+            }
+
+        }
+    }
 
 
     //记录cards
@@ -705,10 +804,29 @@ void GameMainWindow::onPlayCards(Player* player,  Cards& cards)
 
 void GameMainWindow::onPass(Player* player)
 {
+
     //在 player 的出牌区显示"不要"提示
      auto it =m_contextMap.find(player);
      it->info->setPixmap(QPixmap(":/images/pass.png"));
      it->info->show();
+
+     if(player!=m_gameControl->getUserPlayer()){
+
+         {
+             //隐藏上一轮打出的牌
+             auto itt =m_contextMap.find(player);
+             if(!itt->lastCard.isEmpty()){
+                 QVector<Card> lastList=itt->lastCard.toCardList();
+                 for(auto f : lastList){
+                     m_cardMap[f]->hide();
+                 }
+             }
+
+         }
+     }
+
+     //清空lastcard
+     m_contextMap[player].lastCard.clear();
 
 }
 
@@ -751,7 +869,7 @@ void GameMainWindow::onCardClicked(CardPanel* panel)
 
 void GameMainWindow::mouseMoveEvent(QMouseEvent *event)
 {
-    Q_UNUSED(event)
+   
     if(event->buttons() & Qt::LeftButton)
     {
         QPoint pt = event->pos();

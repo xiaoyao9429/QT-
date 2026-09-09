@@ -15,8 +15,8 @@ void RobotPlayer::preparePlayCards()
 {
     // 机器人主动出牌：基于手牌用 Strategy AI 决策
     setIsThinking(true);
-    // 模拟思考 600~1500ms，避免出牌过快造成体验不真实
-    int thinkMs = QRandomGenerator::global()->bounded(600, 1600);
+    // 模拟思考 600~2000ms，避免出牌过快造成体验不真实
+    int thinkMs = QRandomGenerator::global()->bounded(600, 2000);
     QTimer::singleShot(thinkMs, this, [this]() {
         Cards hand = this->cards();
         Strategy st(this, hand);

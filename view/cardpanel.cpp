@@ -105,3 +105,9 @@ void CardPanel::mousePressEvent(QMouseEvent* event)
     // 发出卡牌点击信号，由外部处理选中逻辑
     emit cardClicked(this);
 }
+
+// void CardPanel::mouseMoveEvent(QMouseEvent* event)
+// {
+//     Q_UNUSED(event);
+//     //空实现：事件保持默认 accepted 状态，不向父窗口传播
+// }

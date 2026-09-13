@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+﻿cmake_minimum_required(VERSION 3.16)
 
 project(Landlords VERSION 0.1 LANGUAGES CXX)
 
@@ -71,6 +71,8 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         MANUAL_FINALIZATION
         ${PROJECT_SOURCES}
         view/animationwindow.h view/animationwindow.cpp view/animationwindow.ui
+        endpanel.h endpanel.cpp
+        view/countdown.h view/countdown.cpp
 
     )
 else()

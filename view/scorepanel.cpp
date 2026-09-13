@@ -1,5 +1,6 @@
 ﻿#include "scorepanel.h"
 #include "ui_scorepanel.h"
+#include <QFont>
 
 ScorePanel::ScorePanel(QWidget *parent)
     : QWidget(parent)
@@ -79,6 +80,33 @@ void ScorePanel::reset()
         m_items[i].score = 0;
         refreshItem(i);
     }
+}
+
+void ScorePanel::setFontStyle(int pointSize, const QColor& color)
+{
+    // 字号通过 QFont 设置（保留原有字体族），颜色通过样式表设置
+    QString colorName = color.name();
+    for (int i = 0; i < 3; ++i) {
+        QFont font = m_items[i].nameLabel->font();
+        font.setPointSize(pointSize);
+        m_items[i].nameLabel->setFont(font);
+        m_items[i].scoreLabel->setFont(font);
+
+        m_items[i].nameLabel->setStyleSheet(QStringLiteral("color: %1;").arg(colorName));
+
+        m_items[i].scoreLabel->setStyleSheet(QStringLiteral("color: %1;").arg(colorName));
+    }
+
+    ui->headerScore->setStyleSheet(QStringLiteral("color: %1;").arg(colorName));
+    ui->headerName->setStyleSheet(QStringLiteral("color: %1;").arg(colorName));
+
+    QFont font=ui->headerName->font();
+    font.setPointSize(pointSize);
+    ui->headerScore->setFont(font);
+    QFont font2=ui->headerScore->font();
+    font2.setPointSize(pointSize);
+    ui->headerName->setFont(font2);
+
 }
 
 void ScorePanel::refreshItem(int index)

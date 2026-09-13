@@ -4,6 +4,7 @@
 #include <QWidget>
 #include <QLabel>
 #include <QVector>
+#include <QColor>
 #include "player.h"
 
 QT_BEGIN_NAMESPACE
@@ -31,6 +32,9 @@ public:
 
     // 重置所有得分为 0
     void reset();
+
+    // 统一设置所有标签（名字+分数）的字号与颜色
+    void setFontStyle(int pointSize, const QColor& color);
 
 private:
     // 单个玩家的显示项

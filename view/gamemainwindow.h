@@ -11,7 +11,7 @@
 #include <QSize>
 #include <QLabel>
 #include <animationwindow.h>
-
+#include "countdown.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -63,6 +63,10 @@ public:
     void onUserPlayHand();
     //处理玩家不要
     void onUserPass();
+    //显示结算窗口
+    void showEndingPanel();
+    //初始化倒计时闹钟
+    void initCountDown();
 
 public slots:
 
@@ -129,6 +133,8 @@ private:
     //用户剩余手牌所占的rect
     QRect m_cardsRect;
     QHash<CardPanel*,QRect> m_cardRectMap;
+
+    CountDown * m_counDown;
 
 
 

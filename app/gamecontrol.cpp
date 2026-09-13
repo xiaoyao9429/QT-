@@ -193,6 +193,11 @@ void GameControl::playerPlayCards(Player* player,Cards& cards)
     m_pendPlayer = player;
     m_pendCards = cards;
 
+    // 出牌者自己已无需应对任何牌，清掉它 Player 层的待应对状态，
+    // 否则一轮结束重新领出时 Strategy 会读到旧的 pendPlayer 误走跟牌分支
+    player->setPendCards(Cards());
+    player->setPendPlayer(nullptr);
+
     // 通知 UI 显示出牌
     emit notifyPlayCards(player, cards);
 
@@ -215,6 +220,11 @@ void GameControl::playerPlayCards(Player* player,Cards& cards)
 
 void GameControl::playerPass(Player* player)
 {
+    // 自由出牌（开局/一轮结束重新领出）时桌面上没有待压的牌，不存在"不要"，忽略非法调用
+    if (m_pendPlayer == nullptr) {
+        return;
+    }
+
     //通知ui
     emit notifyPass(player);
 
@@ -226,7 +236,11 @@ void GameControl::playerPass(Player* player)
 
 
         m_pendCards.clear();//不出->打出的是空牌
-        m_pendPlayer = player;
+        m_pendPlayer = nullptr;
+
+        // 同步清空领出者 Player 层的待应对状态，保证机器人走主动出牌分支
+        m_currentPlayer->setPendCards(Cards());
+        m_currentPlayer->setPendPlayer(nullptr);
 
         emit playerStatusChanged(m_currentPlayer, ThinkingForPlayHand);
         m_currentPlayer->preparePlayCards();
@@ -291,14 +305,15 @@ void GameControl::settleGame(Player* winner)
         farmer2->setIsWin(true);
     }
 
-    // 通知 UI
-    emit playerStatusChanged(winner, Winning);
-
     // 计算分数：地主赢→地主+2倍、农民各-1倍；地主输→地主-2倍、农民各+1倍
     bool lordWins = lord->isWin();
     lord->setScore(lord->score() + (lordWins ? 2 * m_gameScore : -2 * m_gameScore));
     farmer1->setScore(farmer1->score() + (lordWins ? -m_gameScore : m_gameScore));
     farmer2->setScore(farmer2->score() + (lordWins ? -m_gameScore : m_gameScore));
+
+    // 通知 UI（放在算分之后：Winning 处理里会弹结算窗口、刷新分数面板，
+    // 必须保证执行时 isWin 和 score 都已写入）
+    emit playerStatusChanged(winner, Winning);
 
     emit notifyGameOver(winner);
 }
@@ -323,6 +338,14 @@ void GameControl::reset()
     m_currentPlayer = m_userPlayer;  // 恢复默认当前玩家，不能置空，否则发牌阶段解引用崩溃
     m_status = Status_Begin;
     m_gameScore = 500;               // 重置本局游戏分数（炸弹翻倍不累积到下一局）
+
+    // 清空每个玩家 Player 层的待应对状态，防止上一局残留影响新一局领出判断
+    m_userPlayer->setPendCards(Cards());
+    m_userPlayer->setPendPlayer(nullptr);
+    m_leftRobot->setPendCards(Cards());
+    m_leftRobot->setPendPlayer(nullptr);
+    m_rightRobot->setPendCards(Cards());
+    m_rightRobot->setPendPlayer(nullptr);
     clearScores();
     initCards();  // 重新初始化 54 张牌堆
 }

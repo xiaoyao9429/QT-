@@ -10,6 +10,8 @@
 #include "cards.h"
 #include "playhand.h"
 #include "QPoint"
+#include "endpanel.h"
+#include <QPropertyAnimation>
 GameMainWindow::GameMainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::GameMainWindow)
@@ -39,8 +41,13 @@ GameMainWindow::GameMainWindow(QWidget *parent)
     ui->scorePanel->setScore(m_playerList[1],0);
     ui->scorePanel->setScore(m_playerList[2],0);
 
+
     //初始化扑克牌
     initCardMap();
+
+    //初始化闹钟
+    initCountDown();
+
 
     //玩家在窗口的上下文环境
     initPlayerContext();
@@ -444,22 +451,33 @@ void GameMainWindow::showAnimationWindow(AnimationType animationtype,int bet)
 
         break;
     case AnimationType::FEIJI:
+        m_animationWindow->setFixedSize(800,75);
+        m_animationWindow->move((width()-m_animationWindow->width())/2,(height()-m_animationWindow->height())/2-100);
+        m_animationWindow->showPlane();
         break;
 
     case AnimationType::LIANDUI:
-
+        m_animationWindow->setFixedSize(250,150);
+        m_animationWindow->move((width()-m_animationWindow->width())/2,(height()-m_animationWindow->height())/2-100);
+        m_animationWindow->showSequence(AnimationWindow::Pair);
         break;
 
     case AnimationType::SHUNZI:
-
+        m_animationWindow->setFixedSize(250,150);
+        m_animationWindow->move((width()-m_animationWindow->width())/2,(height()-m_animationWindow->height())/2-100);
+        m_animationWindow->showSequence(AnimationWindow::Sequence);
         break;
 
     case AnimationType::WANGZHA:
-
+        m_animationWindow->setFixedSize(250,200);
+        m_animationWindow->move((width()-m_animationWindow->width())/2,(height()-m_animationWindow->height())/2-100);
+        m_animationWindow->showJokerBomb();
         break;
 
     case AnimationType::ZHADAN:
-
+        m_animationWindow->setFixedSize(180,200);
+        m_animationWindow->move((width()-m_animationWindow->width())/2,(height()-m_animationWindow->height())/2-100);
+        m_animationWindow->showBomb();
         break;
     default:
         break;
@@ -614,6 +632,64 @@ void GameMainWindow::onUserPass()
 
 }
 
+void GameMainWindow::showEndingPanel()
+{
+
+    bool isLord=m_gameControl->getUserPlayer()->role()==PlayerRole::Lord?true:false;
+    bool isWin=m_gameControl->getUserPlayer()->isWin();
+    EndPanel * panel=new EndPanel(isLord,isWin,this);
+    panel->move((width()-panel->width())/2,-panel->height());
+    panel->setPlayers(m_playerList[0],m_playerList[1],m_playerList[2]);
+    panel->setScore(m_gameControl->getUserPlayer(),m_gameControl->getUserPlayer()->score());
+    panel->setScore(m_gameControl->getLeftRobot(),m_gameControl->getLeftRobot()->score());
+    panel->setScore(m_gameControl->getRightRobot(),m_gameControl->getRightRobot()->score());
+    panel->show();
+
+    QPropertyAnimation *animation = new QPropertyAnimation(panel, "geometry", this);
+    // 动画持续的时间
+    animation->setDuration(1500);   // 1.5s
+    // 设置窗口的起始位置和终止位置
+    animation->setStartValue(QRect(panel->x(), panel->y(), panel->width(), panel->height()));
+    animation->setEndValue(QRect((width() - panel->width()) / 2, (height() - panel->height()) / 2,
+                                 panel->width(), panel->height()));
+    // 设置窗口的运动曲线
+    animation->setEasingCurve(QEasingCurve(QEasingCurve::OutBounce));
+    // 播放动画效果
+    animation->start();
+
+    // 处理窗口信号
+    connect(panel, &EndPanel::continueGame, this, [=]()
+            {
+                panel->close();
+                panel->deleteLater();
+                animation->deleteLater();
+                ui->buttonGroup->selectPage(ButtonGroup::Panel::Empty);
+
+                gameStatusProcess(GameControl::DispatchCard);
+
+            });
+
+
+}
+
+void GameMainWindow::initCountDown()
+{
+
+    m_counDown=new CountDown(this);
+    //m_counDown->move((width()-m_counDown->width())/2,(height()-m_counDown->height())/2+120);
+    connect(m_counDown,&CountDown::notMuchTimer,this,[=](){
+        //播放提示音
+
+    });
+    connect(m_counDown,&CountDown::timeOut,this,[=](){
+       //进入托管模式，但是托管模式还未实现，这里先强制玩家不要
+        onUserPass();
+
+    });
+
+
+}
+
 void GameMainWindow::onPlayerStatusChanged(Player *player, GameControl::PlayerStatus status)
 {
     switch (status) {
@@ -626,24 +702,39 @@ void GameMainWindow::onPlayerStatusChanged(Player *player, GameControl::PlayerSt
 
     case GameControl::ThinkingForPlayHand:
 
+        {
+            //隐藏上一轮打出的牌
+            auto itt =m_contextMap.find(player);
+            if(!itt->lastCard.isEmpty()){
+                QVector<Card> lastList=itt->lastCard.toCardList();
+                for(auto f : lastList){
+                    m_cardMap[f]->hide();
+                }
+            }
+
+            else{
+                itt->info->hide();//隐藏 “不要”
+            }
+
+            //移动闹钟到对应玩家的出牌区域
+            QRect rect=m_contextMap[player].playHandRect;
+            if(player==m_gameControl->getUserPlayer()){
+                m_counDown->move(rect.left()+(rect.width()-m_counDown->width())/2,rect.top());
+            }
+
+            else{
+                m_counDown->move(rect.left(),rect.top()+(rect.height()-m_counDown->height())/2);
+            }
+
+            //启动闹钟
+            m_counDown->showCountDown();
+
+        }
+
+
         //轮到用户出牌/接牌时，显示"出牌/不要"按钮组
         if(player==m_gameControl->getUserPlayer()){
 
-            {
-                //隐藏上一轮打出的牌
-                auto itt =m_contextMap.find(player);
-                if(!itt->lastCard.isEmpty()){
-                    QVector<Card> lastList=itt->lastCard.toCardList();
-                    for(auto f : lastList){
-                        m_cardMap[f]->hide();
-                    }
-                }
-
-                else{
-                    itt->info->hide();//隐藏 “不要”
-                }
-
-            }
 
             if(m_gameControl->getPendPlayer()==player||m_gameControl->getPendPlayer()==nullptr)
             {
@@ -675,7 +766,7 @@ void GameMainWindow::onPlayerStatusChanged(Player *player, GameControl::PlayerSt
         updateScorePanel();
         //分数最高下一轮游戏优先叫地主
         m_gameControl->setCurrentPlayer(player);
-
+        showEndingPanel();
 
 
         break;
@@ -733,24 +824,24 @@ void GameMainWindow::onPlayCards(Player* player,  Cards& cards)
         }
     }
 
-    if(player!=m_gameControl->getUserPlayer()){
+    // if(player!=m_gameControl->getUserPlayer()){
 
-        {
-            //隐藏上一轮打出的牌
-            auto itt =m_contextMap.find(player);
-            if(!itt->lastCard.isEmpty()){
-                QVector<Card> lastList=itt->lastCard.toCardList();
-                for(auto f : lastList){
-                    m_cardMap[f]->hide();
-                }
-            }
+    //     {
+    //         //隐藏上一轮打出的牌
+    //         auto itt =m_contextMap.find(player);
+    //         if(!itt->lastCard.isEmpty()){
+    //             QVector<Card> lastList=itt->lastCard.toCardList();
+    //             for(auto f : lastList){
+    //                 m_cardMap[f]->hide();
+    //             }
+    //         }
 
-            else{
-                itt->info->hide();//隐藏 “不要”
-            }
+    //         else{
+    //             itt->info->hide();//隐藏 “不要”
+    //         }
 
-        }
-    }
+    //     }
+    // }
 
 
     //记录cards
@@ -800,6 +891,9 @@ void GameMainWindow::onPlayCards(Player* player,  Cards& cards)
 
     //根据牌型播放音效
 
+    //隐藏闹钟
+    m_counDown->stopCountDown();
+
 }
 
 void GameMainWindow::onPass(Player* player)
@@ -827,6 +921,8 @@ void GameMainWindow::onPass(Player* player)
 
      //清空lastcard
      m_contextMap[player].lastCard.clear();
+     //隐藏闹钟
+     m_counDown->stopCountDown();
 
 }
 
@@ -839,7 +935,11 @@ void GameMainWindow::onLordConfirmed(Player* landlord)
 
 void GameMainWindow::onGameOver(Player* winner)
 {
-    //TODO: 胜负结算、分数刷新（可配合 winner->isWin() / role() / score()）
+    Q_UNUSED(winner);
+    //结算分数已在 GameControl::settleGame 中写入 Player 对象，这里同步到分数面板
+    for (Player* player : m_playerList) {
+        ui->scorePanel->setScore(player, player->score());
+    }
 }
 
 void GameMainWindow::onCardClicked(CardPanel* panel)

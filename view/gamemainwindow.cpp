@@ -11,6 +11,7 @@
 #include "playhand.h"
 #include "QPoint"
 #include "endpanel.h"
+#include "bgmcontroller.h"
 #include <QPropertyAnimation>
 GameMainWindow::GameMainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -66,7 +67,8 @@ GameMainWindow::GameMainWindow(QWidget *parent)
     m_animator->setTargetPos(m_playerList[2], QPoint(rightRect.left() - m_cardSize.width(), m_baseCardPos.y()));
     connect(m_animator, &DealAnimator::cardArrived, this, &GameMainWindow::onCardArrived);
 
-
+    //启动欢迎背景音乐（单例，后续各事件点通过 BGMController::instance() 控制）
+    BGMController::instance()->playBgm(BGMController::Scene::Welcome);
 
 }
 
@@ -336,7 +338,9 @@ void GameMainWindow::dispatchCards()
    //启动发牌动画，从当前玩家开始
    m_animator->dealToPlayer(m_gameControl->getCurrentPlayer());
 
-   //背景音乐;
+   //音频：新一局开始（含再来一局）恢复常规背景乐 + 发牌音效
+   BGMController::instance()->playBgm(BGMController::Scene::Normal);
+   BGMController::instance()->playEffect(QStringLiteral("Special_Dispatch"));
 }
 
 void GameMainWindow::onCardArrived(Player* player)
@@ -559,6 +563,15 @@ void GameMainWindow::preparePlayingHand()
 
 }
 
+QString GameMainWindow::voicePrefix(Player *player) const
+{
+    //sex 由 GameControl 构造时随机设为 Male(1)/Female(2)；兜底 Male 防止未设置时拼出非法音效名
+    if (player && player->sex() == PlayerSex::Female) {
+        return QStringLiteral("Woman");
+    }
+    return QStringLiteral("Man");
+}
+
 void GameMainWindow::updateScorePanel()
 {
     ui->scorePanel->setScore(m_gameControl->getUserPlayer(),m_gameControl->getUserPlayer()->score());
@@ -637,6 +650,11 @@ void GameMainWindow::showEndingPanel()
 
     bool isLord=m_gameControl->getUserPlayer()->role()==PlayerRole::Lord?true:false;
     bool isWin=m_gameControl->getUserPlayer()->isWin();
+
+    //音频：按本局胜负切换结算音乐（点"继续游戏"后 dispatchCards 会恢复 Normal）
+    BGMController::instance()->playBgm(isWin ? BGMController::Scene::Win
+                                             : BGMController::Scene::Lose);
+
     EndPanel * panel=new EndPanel(isLord,isWin,this);
     panel->move((width()-panel->width())/2,-panel->height());
     panel->setPlayers(m_playerList[0],m_playerList[1],m_playerList[2]);
@@ -793,7 +811,20 @@ void GameMainWindow::onGrabLordBet(Player *bettor, int bet, bool isFirstCall)
     //显示叫地主的分数
     showAnimationWindow(AnimationType::BET,bet);
 
-    //背景音乐
+    //音频：按玩家性别播叫/抢/不抢语音
+    BGMController* bgm = BGMController::instance();
+    QString prefix = voicePrefix(bettor);
+    if (bet == 0) {
+        bgm->playEffect(prefix + QStringLiteral("_NoRob"));
+    } else if (isFirstCall) {
+        bgm->playEffect(prefix + QStringLiteral("_Order"));
+    } else if(bet==1){
+        bgm->playEffect(prefix + QStringLiteral("_Rob1"));
+    } else if(bet ==2){
+        bgm->playEffect(prefix + QStringLiteral("_Rob2"));
+    } else if(bet==3){
+        bgm->playEffect(prefix + QStringLiteral("_Rob3"));
+    }
 }
 
 void GameMainWindow::onPlayCards(Player* player,  Cards& cards)
@@ -851,45 +882,213 @@ void GameMainWindow::onPlayCards(Player* player,  Cards& cards)
     //根据牌型绘制特效
     PlayHand playhand(cards);
     PlayHand::HandType type=playhand.getHandType();
+    //根据牌型播放音效
+    QString prefix=voicePrefix(player);
+
+    int random=QRandomGenerator::global()->bounded(1,4);
 
     switch (type) {
     case PlayHand::Hand_Bomb_Jokers://王炸
         showAnimationWindow(AnimationType::WANGZHA);
+        BGMController::instance()->playEffect(prefix+"_wangzha");
         break;
 
     case PlayHand::Hand_Bomb://炸弹
-         showAnimationWindow(AnimationType::ZHADAN);
+        showAnimationWindow(AnimationType::ZHADAN);
+        BGMController::instance()->playEffect(prefix+"_zhadan");
         break;
 
     case PlayHand::Hand_Plane://飞机
-         showAnimationWindow(AnimationType::FEIJI);
+        if(player->pendPlayer()!=player&&player->pendPlayer()!=nullptr){
+            BGMController::instance()->playEffect(prefix+"_dani"+QString("%1").arg(random));
+        }
+        else{
+            BGMController::instance()->playEffect(prefix+"_feiji");
+        }
+        showAnimationWindow(AnimationType::FEIJI);
+
         break;
     case PlayHand::Hand_Plane_Two_Single://飞机
+        if(player->pendPlayer()!=player&&player->pendPlayer()!=nullptr){
+            BGMController::instance()->playEffect(prefix+"_dani"+QString("%1").arg(random));
+        }
+        else{
+            BGMController::instance()->playEffect(prefix+"_feiji");
+        }
         showAnimationWindow(AnimationType::FEIJI);
         break;
 
     case PlayHand::Hand_Plane_Two_Pair://飞机
+        if(player->pendPlayer()!=player&&player->pendPlayer()!=nullptr){
+            BGMController::instance()->playEffect(prefix+"_dani"+QString("%1").arg(random));
+        }
+        else{
+            BGMController::instance()->playEffect(prefix+"_feiji");
+        }
         showAnimationWindow(AnimationType::FEIJI);
+
         break;
 
 
     case PlayHand::Hand_Seq_Pair://连对
         showAnimationWindow(AnimationType::LIANDUI);
+        if(player->pendPlayer()!=player&&player->pendPlayer()!=nullptr){
+            BGMController::instance()->playEffect(prefix+"_dani"+QString("%1").arg(random));
+        }
+        else{
+             BGMController::instance()->playEffect(prefix+"_liandui");
+        }
+
         break;
 
     case PlayHand::Hand_Seq_Single://顺子
         showAnimationWindow(AnimationType::SHUNZI);
+        if(player->pendPlayer()!=player&&player->pendPlayer()!=nullptr){
+            BGMController::instance()->playEffect(prefix+"_dani"+QString("%1").arg(random));
+        }
+        else{
+             BGMController::instance()->playEffect(prefix+"_shunzi");
+        }
+
         break;
+    case PlayHand::Hand_Single:
+        switch(playhand.getCardPoint()){
+        case CardPoint::Card_3:
+            BGMController::instance()->playEffect(prefix+"_3");
+            break;
+
+        case CardPoint::Card_4:
+            BGMController::instance()->playEffect(prefix+"_4");
+            break;
+
+        case CardPoint::Card_5:
+            BGMController::instance()->playEffect(prefix+"_5");
+            break;
+        case CardPoint::Card_6:
+            BGMController::instance()->playEffect(prefix+"_6");
+            break;
+        case CardPoint::Card_7:
+            BGMController::instance()->playEffect(prefix+"_7");
+            break;
+        case CardPoint::Card_8:
+            BGMController::instance()->playEffect(prefix+"_8");
+            break;
+        case CardPoint::Card_9:
+            BGMController::instance()->playEffect(prefix+"_9");
+            break;
+        case CardPoint::Card_10:
+            BGMController::instance()->playEffect(prefix+"_10");
+            break;
+        case CardPoint::Card_J:
+            BGMController::instance()->playEffect(prefix+"_11");
+            break;
+        case CardPoint::Card_Q:
+            BGMController::instance()->playEffect(prefix+"_12");
+            break;
+        case CardPoint::Card_K:
+            BGMController::instance()->playEffect(prefix+"_13");
+            break;
+        case CardPoint::Card_A:
+            BGMController::instance()->playEffect(prefix+"_1");
+            break;
+        case CardPoint::Card_2:
+            BGMController::instance()->playEffect(prefix+"_2");
+            break;
+        case CardPoint::Card_SJ:
+            BGMController::instance()->playEffect(prefix+"_14");
+            break;
+        case CardPoint::Card_BJ:
+            BGMController::instance()->playEffect(prefix+"_15");
+            break;
+        default:
+            break;
+        }
+
+        break;
+
+    case PlayHand::Hand_Pair:
+        switch(playhand.getCardPoint()){
+        case CardPoint::Card_3:
+            BGMController::instance()->playEffect(prefix+"_dui3");
+            break;
+
+        case CardPoint::Card_4:
+            BGMController::instance()->playEffect(prefix+"_dui4");
+            break;
+
+        case CardPoint::Card_5:
+            BGMController::instance()->playEffect(prefix+"_dui5");
+            break;
+        case CardPoint::Card_6:
+            BGMController::instance()->playEffect(prefix+"_dui6");
+            break;
+        case CardPoint::Card_7:
+            BGMController::instance()->playEffect(prefix+"_dui7");
+            break;
+        case CardPoint::Card_8:
+            BGMController::instance()->playEffect(prefix+"_dui8");
+            break;
+        case CardPoint::Card_9:
+            BGMController::instance()->playEffect(prefix+"_dui9");
+            break;
+        case CardPoint::Card_10:
+            BGMController::instance()->playEffect(prefix+"_dui10");
+            break;
+        case CardPoint::Card_J:
+            BGMController::instance()->playEffect(prefix+"_dui11");
+            break;
+        case CardPoint::Card_Q:
+            BGMController::instance()->playEffect(prefix+"_dui12");
+            break;
+        case CardPoint::Card_K:
+            BGMController::instance()->playEffect(prefix+"_dui13");
+            break;
+        case CardPoint::Card_A:
+            BGMController::instance()->playEffect(prefix+"_dui1");
+            break;
+        case CardPoint::Card_2:
+            BGMController::instance()->playEffect(prefix+"_dui2");
+            break;
+        default:
+            break;
+        }
+
+        break;
+
+        break;
+
+    case PlayHand::Hand_Triple_Single:
+        if(player->pendPlayer()!=player&&player->pendPlayer()!=nullptr){
+            BGMController::instance()->playEffect(prefix+"_dani"+QString("%1").arg(random));
+        }
+        else{
+             BGMController::instance()->playEffect(prefix+"_sandaiyi");
+        }
+
+        break;
+
+    case PlayHand::Hand_Triple_Pair:
+        if(player->pendPlayer()!=player&&player->pendPlayer()!=nullptr){
+            BGMController::instance()->playEffect(prefix+"_dani"+QString("%1").arg(random));
+        }
+        else{
+             BGMController::instance()->playEffect(prefix+"_sandaiyidui");
+        }
+
     default:
         break;
     }
 
 
 
+
+
     //更新手牌显示
     updatePlayerCards(player);
 
-    //根据牌型播放音效
+
+
+
 
     //隐藏闹钟
     m_counDown->stopCountDown();
@@ -923,6 +1122,10 @@ void GameMainWindow::onPass(Player* player)
      m_contextMap[player].lastCard.clear();
      //隐藏闹钟
      m_counDown->stopCountDown();
+
+     //随机播一条"不要"语音（buyao1~4）
+     int index = QRandomGenerator::global()->bounded(1, 5);
+     BGMController::instance()->playEffect(voicePrefix(player) + QStringLiteral("_buyao") + QString::number(index));
 
 }
 

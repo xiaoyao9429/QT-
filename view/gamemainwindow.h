@@ -57,6 +57,8 @@ public:
     void showAnimationWindow(AnimationType animationtype,int bet=0);
     //出牌前的一些ui动作
     void preparePlayingHand();
+    //根据玩家性别返回语音前缀（"Man"/"Woman"），用于拼接 playEffect 的音效名
+    QString voicePrefix(Player* player) const;
     //更新分数面板
     void updateScorePanel();
     //处理玩家出牌

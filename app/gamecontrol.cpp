@@ -193,13 +193,14 @@ void GameControl::playerPlayCards(Player* player,Cards& cards)
     m_pendPlayer = player;
     m_pendCards = cards;
 
+    // 通知 UI 显示出牌（同步执行，需在清 pend 之前发，
+    // 否则 UI 读不到 pendPlayer，无法区分"跟牌压人/主动领出"播 dani 音效）
+    emit notifyPlayCards(player, cards);
+
     // 出牌者自己已无需应对任何牌，清掉它 Player 层的待应对状态，
     // 否则一轮结束重新领出时 Strategy 会读到旧的 pendPlayer 误走跟牌分支
     player->setPendCards(Cards());
     player->setPendPlayer(nullptr);
-
-    // 通知 UI 显示出牌
-    emit notifyPlayCards(player, cards);
 
     //cards是炸弹,游戏分数翻倍
     PlayHand playhand(cards);

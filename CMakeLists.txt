@@ -1,4 +1,4 @@
-﻿cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.16)
 
 project(Landlords VERSION 0.1 LANGUAGES CXX)
 
@@ -87,6 +87,11 @@ else()
             ${PROJECT_SOURCES}
         )
     endif()
+endif()
+
+if(WIN32)
+    # exe 文件图标（资源管理器显示），MinGW 下 CMake 自动用 windres 编译 .rc
+    target_sources(Landlords PRIVATE app.rc)
 endif()
 
 target_link_libraries(Landlords PRIVATE Qt${QT_VERSION_MAJOR}::Widgets Qt${QT_VERSION_MAJOR}::Multimedia)
